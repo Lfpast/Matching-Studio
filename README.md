@@ -82,7 +82,7 @@ The system accepts enterprise research queries and automatically:
 ## Project Structure
 
 ```text
-Professor_Matching_System/
+Matching_Studio/
 ├── api/
 │   ├── app.py
 │   ├── auth.py
@@ -94,15 +94,6 @@ Professor_Matching_System/
 │       └── styles.css
 ├── config/
 │   └── config.yaml
-├── data/
-│   └── raw/
-│       ├── BMH_2025.xlsx
-│       ├── EAS_2025.xlsx
-│       ├── MES_2025.xlsx
-│       ├── professor_information.csv
-│       ├── professor_projects.csv
-│       ├── professor_publications.csv
-│       └── startup_2025.xlsx
 ├── dev/
 │   ├── DEPLOYMENT_WIN10_GUIDE.md
 │   ├── QUICK_REFERENCE.md
@@ -116,13 +107,6 @@ Professor_Matching_System/
 │   ├── Database-Dynamic-Update-Guide.pdf
 │   ├── Professor-Industry Matching System.pptx
 │   └── System-Startup-Guide.pdf
-├── plans/
-│   ├── plan-databaseUpdateIntegration.prompt.md
-│   ├── plan-dynamicProfessorDataUpdate.prompt.md
-│   ├── plan-embedDeepTechProjects.prompt.md
-│   ├── plan-integrateBmhMesDeepTech.prompt.md
-│   ├── plan-startupSearch.prompt.md
-│   └── plan-systemStartUp.prompt.md
 ├── src/
 │   ├── __init__.py
 │   ├── embedding_model.py
