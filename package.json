@@ -1,0 +1,21 @@
+{
+  "name": "professor_matching_system",
+  "version": "1.0.0",
+  "description": "A GraphRAG-powered intelligent matching platform that connects enterprises with academic research expertise at HKUST. The system combines semantic search, knowledge graph integration, priority-based ranking, startup search, and a real-time database update pipeline.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@studio-freight/lenis": "^1.0.42",
+    "gsap": "^3.14.2",
+    "split-type": "^0.3.4"
+  }
+}

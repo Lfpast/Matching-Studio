@@ -1,0 +1,104 @@
+# ============================================
+# Professor Matching System 配置示例
+# Win10 GTX 1060 3GB 优化版本
+# ============================================
+
+# 数据源配置
+data:
+  raw_csv: data/raw/professor_information.csv
+  projects_csv: data/raw/professor_projects.csv
+  publications_csv: data/raw/professor_publications.csv
+  deeptech_auto_discovery:
+    enabled: true
+    directory: data/raw/
+    recursive: false
+    filename_regex: '^(?P<source>[A-Za-z]+)_(?P<year>\d{4})\.(?:xlsx|xls)$'
+  deeptech_sources:
+    - path: data/raw/EAS_2025.xlsx
+      source_id: EAS
+    - path: data/raw/BMH_2025.xlsx
+      source_id: BMH
+    - path: data/raw/MES_2025.xlsx
+      source_id: MES
+
+# ⭐ 嵌入模型配置 (核心)
+# 根据硬件选择不同的批量大小和设备
+embedding:
+  # ============ CPU 版本配置 ============
+  model_name: sentence-transformers/all-mpnet-base-v2
+  batch_size: 2              # CPU: 使用小批量 (2-4)
+  device: cpu                 # CPU: 使用 "cpu"
+  num_workers: 2              # CPU: 线程数 (可调整 1-4)
+  
+  # =========== GPU 版本配置 (GTX 1060 3GB) ===========
+  # batch_size: 4              # GPU: 从4开始，如果OOM改为2甚至1
+  # device: cuda                # GPU: 使用 "cuda"
+  # num_workers: 0              # GPU: 设为0，避免多进程显存溢出
+  
+  # 属性权重 (不需要改动)
+  attribute_weights:
+    deeptech_projects: 5.0
+    paper: 2.5
+    research_interests: 1.5
+    leading_project: 1.0
+    department: 0.2
+    title: 0.1
+    other: 0.1
+
+# 深科技技术列配置
+deeptech:
+  columns:
+    cluster: "OKT Tech Cluster"
+    pi: "Principal Investigator (PI)"
+    title: "Technology Title"
+    trl: "Technology Readiness Level (TRL)"
+    ip_status: "IP status"
+    overview: "Technology Overview"
+    tech_edges: "Key Technology Edges"
+    app_1: "Potential Applications - 1st technology application"
+    app_2: "Potential Applications - 2nd technology application (if any)"
+    app_3: "Potential Applications - 3rd technology application (if any)"
+    industry_1: "Applicable Industry - 1st industry"
+    industry_2: "Applicable Industry - 2nd industry (if any)"
+
+# 图构建配置
+graph:
+  similarity_threshold: 0.15
+  department_edge_weight: 0.05
+
+# 匹配引擎配置
+matching:
+  alpha: 0.85
+  beta: 0.1
+  graph_neighbor_weight: 0.15
+
+# 优先级策略配置
+priority:
+  w_years: 0.5
+  w_title: 0.5
+  w_engineering: 0.5
+
+# 查询处理配置
+query:
+  enable_validation: true
+  enable_keyword_extraction: true
+  similarity_threshold: 0.25
+  weak_threshold: 0.35
+
+# ============================================
+# 性能优化建议
+# ============================================
+# 
+# 如果运行缓慢 (CPU版本):
+# 1. 增加 num_workers: 从 2 改到 4
+# 2. 使用更小的模型:
+#    model_name: sentence-transformers/all-MiniLM-L6-v2
+# 
+# 如果出现内存错误 (GPU版本):
+# 1. 降低 batch_size: 从 4 改到 2 或 1
+# 2. 改用 CPU 版本 (device: cpu)
+# 
+# 如果显存溢出 (GPU版本):
+# 1. 添加缓存清理:
+#    import torch; torch.cuda.empty_cache()
+# 2. 使用混合精度训练 (高级)

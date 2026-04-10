@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Professor Matching Studio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <!-- 侧边栏导航 (新增) -->
+    <aside id="sidebar" class="sidebar">
+      <nav class="sidebar-nav">
+        <h2 class="sidebar-title">Navigation</h2>
+        <ul class="nav-list">
+          <li>
+            <a href="#" class="nav-link active" data-page="professor">
+              <span class="nav-icon">🔍</span>
+              Professor Search
+            </a>
+          </li>
+          <li>
+            <a href="#" class="nav-link" data-page="startup">
+              <span class="nav-icon">🚀</span>
+              Startup Search
+            </a>
+          </li>
+          <li>
+            <a href="#" class="nav-link" data-page="update">
+              <span class="nav-icon">📤</span>
+              Database Update
+            </a>
+          </li>
+        </ul>
+      </nav>
+      <div class="sidebar-footer">
+        <button id="logout-btn" class="logout-btn" style="display: none;">Logout</button>
+      </div>
+    </aside>
+
+    <!-- 认证模态框 (新增) -->
+    <div id="auth-modal" class="modal hidden">
+      <div class="modal-content auth-modal">
+        <h2>Database Access</h2>
+        <p class="auth-subtitle">Please enter your credentials to access database update features</p>
+        <form id="auth-form" class="auth-form">
+          <div class="form-group">
+            <label for="username-input">Username</label>
+            <input 
+              type="text" 
+              id="username-input" 
+              placeholder="Username" 
+              required 
+              autocomplete="username"
+            />
+          </div>
+          <div class="form-group">
+            <label for="password-input">Password</label>
+            <input 
+              type="password" 
+              id="password-input" 
+              placeholder="Password" 
+              required 
+              autocomplete="current-password"
+            />
+          </div>
+          <div class="form-checkbox">
+            <input type="checkbox" id="remember-me" />
+            <label for="remember-me">Remember me</label>
+          </div>
+          <button type="submit" id="auth-submit" class="auth-submit-btn">Log In</button>
+          <p id="auth-error" class="error-message"></p>
+        </form>
+      </div>
+    </div>
+
+    <!-- 主容器，包含两个页面 -->
+    <main id="main-container" class="main-container">
+
+      <!-- 搜索页面 (现有内容) -->
+      <div id="professor-page" class="page active">
+        <header class="hero">
+          <div class="hero-copy">
+            <button id="professor-hamburger-btn" class="hamburger-btn" aria-label="Toggle menu">
+              <span></span><span></span><span></span>
+            </button>
+            <p class="eyebrow">GraphRAG Matching Console</p>
+            <h1>Professor Search</h1>
+            <p class="subtitle">
+              Explore research strengths, rank by semantic fit, and apply strategic
+              priority in one pass.
+            </p>
+          </div>
+          <div class="hero-card">
+            <div class="card-header">
+              <span class="status" id="professorApiStatus">Checking API...</span>
+            </div>
+            <form id="professorSearchForm">
+              <label for="professorQuery">Enterprise query</label>
+              <textarea
+                id="professorQuery"
+                name="professorQuery"
+                placeholder="e.g. medical imaging, computer vision, diagnostics"
+                required
+              ></textarea>
+
+              <div class="grid">
+                <div class="field">
+                  <label for="professorTopK">Top K</label>
+                  <input type="number" id="professorTopK" name="professorTopK" min="1" max="20" value="5" />
+                </div>
+                <div class="field">
+                  <label for="professorAlpha">Alpha (similarity)</label>
+                  <input type="number" id="professorAlpha" name="professorAlpha" step="0.05" min="0" max="1" value="0.8" />
+                </div>
+                <div class="field">
+                  <label for="professorBeta">Beta (priority)</label>
+                  <input type="number" id="professorBeta" name="professorBeta" step="0.05" min="0" max="1" value="0.2" />
+                </div>
+                <div class="field">
+                  <label for="professorNeighborWeight">Graph neighbor</label>
+                  <input type="number" id="professorNeighborWeight" name="professorNeighborWeight" step="0.05" min="0" max="1" value="0.1" />
+                </div>
+              </div>
+
+              <button type="submit">
+                Run matching
+                <span class="button-arrow">→</span>
+              </button>
+            </form>
+          </div>
+        </header>
+
+        <section class="results" aria-live="polite">
+          <div class="results-header">
+            <h2>Recommended professors</h2>
+            <p id="professorResultsHint">Submit a query to see ranked matches.</p>
+          </div>
+          <div id="professorEmptyState" class="empty-state">
+            <div class="empty-state-icon">&#128270;</div>
+            <h3>Ready to Explore</h3>
+            <p>Enter your research query above to discover matching professors.<br/>Our GraphRAG engine will rank them by semantic similarity and strategic priority.</p>
+            <div class="empty-state-tags">
+              <span>Semantic Search</span>
+              <span>Graph-enhanced</span>
+              <span>Priority Ranking</span>
+            </div>
+          </div>
+          <div id="professorResultsList" class="results-grid"></div>
+        </section>
+
+        <footer>
+          <span>Powered by GraphRAG-style matching</span>
+          <span>API: /match</span>
+        </footer>
+      </div>
+
+      <!-- Startup 搜索页面 -->
+      <div id="startup-page" class="page">
+        <header class="hero">
+          <div class="hero-copy">
+            <button id="hamburger-btn-startup" class="hamburger-btn" aria-label="Toggle menu">
+              <span></span><span></span><span></span>
+            </button>
+            <p class="eyebrow">GraphRAG Matching Console</p>
+            <h1>Startup Search</h1>
+            <p class="subtitle">
+              Discover startup projects by semantic relevance with graph-enhanced ranking.
+            </p>
+          </div>
+          <div class="hero-card">
+            <div class="card-header">
+              <span class="status" id="startupApiStatus">API online</span>
+            </div>
+            <form id="startupForm">
+              <label for="startupQuery">Startup query</label>
+              <textarea
+                id="startupQuery"
+                name="startupQuery"
+                placeholder="e.g. medical imaging startups, AI robotics chips"
+                required
+              ></textarea>
+
+              <div class="grid startup-grid">
+                <div class="field">
+                  <label for="startupTopK">Top K</label>
+                  <input type="number" id="startupTopK" name="startupTopK" min="1" max="20" value="5" />
+                </div>
+                <div class="field">
+                  <label for="startupNeighborWeight">Graph neighbor</label>
+                  <input type="number" id="startupNeighborWeight" name="startupNeighborWeight" step="0.05" min="0" max="1" value="0.15" />
+                </div>
+              </div>
+
+              <button type="submit">
+                Run matching
+                <span class="button-arrow">→</span>
+              </button>
+            </form>
+          </div>
+        </header>
+
+        <section class="results" aria-live="polite">
+          <div class="results-header">
+            <h2>Recommended startup projects</h2>
+            <p id="startupResultsHint">Submit a query to see ranked startup matches.</p>
+          </div>
+          <div id="startupEmptyState" class="empty-state">
+            <div class="empty-state-icon">&#128640;</div>
+            <h3>Ready to Match</h3>
+            <p>Enter your startup query above to discover matching projects.<br/>Results are ranked with semantic similarity and graph-enhanced signals.</p>
+            <div class="empty-state-tags">
+              <span>Startup Discovery</span>
+              <span>Semantic Search</span>
+              <span>Graph-enhanced</span>
+            </div>
+          </div>
+          <div id="startupResultsList" class="results-grid"></div>
+        </section>
+
+        <footer>
+          <span>Powered by GraphRAG-style matching</span>
+          <span>API: /match (mode=startup)</span>
+        </footer>
+      </div>
+
+      <!-- 数据库更新页面 -->
+      <div id="update-page" class="page">
+        <header class="hero">
+          <div class="hero-copy">
+            <button id="hamburger-btn-update" class="hamburger-btn" aria-label="Toggle menu">
+              <span></span><span></span><span></span>
+            </button>
+            <h1 class="page-title">Database Update Center</h1>
+            <p class="page-subtitle">Upload files and start the database update process</p>
+          </div>
+        </header>
+        
+        <div class="update-container">
+          <div class="upload-content">
+            <!-- 文件上传区域 -->
+            <div class="upload-sections">
+              <!-- Section 1: input.csv上传 -->
+              <div class="upload-section">
+                <div class="upload-window" data-upload-type="input-csv">
+                  <div class="file-icon">📄</div>
+                  <p class="upload-hint">Upload input.csv</p>
+                  <p class="upload-format">(CSV format, required)</p>
+                  <input type="file" id="input-csv-file" accept=".csv" hidden />
+                  <button type="button" class="upload-btn" id="input-csv-btn">Choose File</button>
+                  <p class="upload-status" id="input-csv-status"></p>
+                </div>
+                
+                <div class="actions">
+                  <button type="button" class="submit-btn" id="submit-csv-btn">
+                    Submit CSV
+                  </button>
+                </div>
+              </div>
+              
+              <!-- Section 2: DeepTech xlsx上传 -->
+              <div class="upload-section">
+                <div class="upload-window" data-upload-type="deeptech-xlsx">
+                  <div class="file-icon">📊</div>
+                  <p class="upload-hint">Upload DeepTech Project File</p>
+                  <p class="upload-format">({field}_{year}.xlsx, optional)</p>
+                  <input type="file" id="deeptech-xlsx-file" accept=".xlsx" hidden />
+                  <button type="button" class="upload-btn" id="deeptech-xlsx-btn">
+                    Choose File
+                  </button>
+                  <p class="upload-status" id="deeptech-xlsx-status"></p>
+                </div>
+                
+                <div class="actions">
+                  <button type="button" class="submit-btn" id="submit-xlsx-btn">
+                    Submit XLSX
+                  </button>
+                </div>
+              </div>
+
+              <!-- Section 3: Startup xlsx上传 -->
+              <div class="upload-section">
+                <div class="upload-window" data-upload-type="startup-xlsx">
+                  <div class="file-icon">🚀</div>
+                  <p class="upload-hint">Upload Startup Source File</p>
+                  <p class="upload-format">(startup_{year}.xlsx, optional)</p>
+                  <input type="file" id="startup-xlsx-file" accept=".xlsx,.xls" hidden />
+                  <button type="button" class="upload-btn" id="startup-xlsx-btn">
+                    Choose File
+                  </button>
+                  <p class="upload-status" id="startup-xlsx-status"></p>
+                </div>
+
+                <div class="actions">
+                  <button type="button" class="submit-btn" id="submit-startup-btn">
+                    Submit Startup XLSX
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            <!-- 启动更新按钮 -->
+            <div class="action-section">
+              <button type="button" class="primary-btn" id="start-update-btn" disabled>
+                Start Database Update
+              </button>
+            </div>
+          </div>
+          
+          <!-- 监控面板（右侧固定） -->
+          <div class="monitor-section">
+            <!-- 进度条 -->
+            <div class="progress-container">
+              <h3 class="monitor-title">Progress</h3>
+              <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill"></div>
+              </div>
+              <p class="progress-text" id="progress-text">0%</p>
+            </div>
+            
+            <!-- 信息框 -->
+            <div class="info-box">
+              <h3 class="monitor-title">Status</h3>
+              <div class="info-content">
+                <p class="info-item">
+                  <span class="info-label">Stage:</span>
+                  <span class="info-value" id="info-stage">Waiting...</span>
+                </p>
+                <p class="info-item">
+                  <span class="info-label">Processing:</span>
+                  <span class="info-value" id="info-professor">-</span>
+                </p>
+                <p class="info-item">
+                  <span class="info-label">Status:</span>
+                  <span class="info-value" id="info-status">Idle</span>
+                </p>
+              </div>
+            </div>
+            
+            <!-- 报告展示区 -->
+            <div id="report-container" class="report-container hidden">
+              <h3 class="monitor-title">Update Report</h3>
+              <button type="button" id="download-report-btn" class="download-btn">
+                Download Report (.md)
+              </button>
+              <div id="report-preview" class="report-preview">
+                <pre id="report-content"></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+
+    <div id="modal-root"></div>
+    <script src="/static/app.js"></script>
+  </body>
+</html>

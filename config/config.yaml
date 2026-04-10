@@ -1,0 +1,134 @@
+data:
+  raw_csv: data/raw/professor_information.csv
+  projects_csv: data/raw/professor_projects.csv
+  publications_csv: data/raw/professor_publications.csv
+  deeptech_auto_discovery:
+    enabled: true
+    directory: data/raw/
+    recursive: false
+    filename_regex: '^(?P<source>[A-Za-z]+)_(?P<year>\d{4})\.(?:xlsx|xls)$'
+  startup_auto_discovery:
+    enabled: true
+    directory: data/raw/
+    recursive: false
+    filename_regex: '^startup_(?P<year>\d{4})\.(?:xlsx|xls)$'
+
+embedding:
+  model_name: sentence-transformers/all-mpnet-base-v2
+  batch_size: 32
+  attribute_weights:
+    deeptech_projects: 5.0
+    paper: 2.5
+    research_interests: 1.5
+    leading_project: 1.0
+    department: 0.2
+    title: 0.1
+    other: 0.1
+
+deeptech:
+  columns:
+    cluster: "OKT Tech Cluster"
+    pi: "Principal Investigator (PI)"
+    title: "Technology Title"
+    trl: "Technology Readiness Level (TRL)"
+    ip_status: "IP status"
+    overview: "Technology Overview"
+    tech_edges: "Key Technology Edges"
+    app_1: "Potential Applications - 1st technology application"
+    app_2: "Potential Applications - 2nd technology application (if any)"
+    app_3: "Potential Applications - 3rd technology application (if any)"
+    industry_1: "Applicable Industry - 1st industry"
+    industry_2: "Applicable Industry - 2nd industry (if any)"
+
+startup:
+  columns:
+    people: "People"
+    company_name: "English Name of company"
+    ref_code: "Ref. Code"
+    funding: "Funding"
+    background_year: "Background (Year)"
+    category: "Category"
+    description: "Brief Description"
+    tel: "Tel"
+    email: "Email"
+    website: "Website"
+
+  graph:
+    similarity_threshold: 0.22
+    category_weight: 0.571
+    description_weight: 0.429
+
+  matching:
+    default_top_k: 5
+    default_alpha: 1.0
+    default_beta: 0.0
+    default_graph_neighbor_weight: 0.15
+
+  embedding_weights:
+    company_name: 0.8
+    category: 1.3
+    description: 2.0
+
+  semantic_matching:
+    min_field_similarity: 0.08
+    field_weights:
+      company_name: 0.28
+      description: 0.52
+      category: 0.20
+
+graph:
+  similarity_threshold: 0.15
+  department_edge_weight: 0.05
+
+matching:
+  alpha: 0.85
+  beta: 0.1
+  graph_neighbor_weight: 0.15
+
+priority:
+  w_years: 0.5
+  w_title: 0.5
+  w_engineering: 0.5
+  # default_years_since_phd: 10
+  # engineering_bonus: 1.2
+
+# Query processing configuration
+query:
+  # Enable query validation
+  enable_validation: true
+  # Enable keyword extraction
+  enable_keyword_extraction: true
+  # Minimum similarity threshold (below = INVALID)
+  similarity_threshold: 0.25
+  # Weak relevance threshold (below = WEAK_RELEVANCE)
+  weak_threshold: 0.35
+
+auth:
+  credentials:
+    - username: "admin"
+      password: "admin123"
+  jwt_secret: "your_secret_key_here"
+  token_ttl_minutes: 60
+  session_ttl_hours: 24
+
+file_upload:
+  input_csv_destination: "./"
+  input_csv_max_size_mb: 10
+  deeptech_destination: "data/raw/"
+  deeptech_max_size_mb: 50
+  deeptech_allowed_extensions: [".xlsx", ".xls"]
+  startup_destination: "data/raw/"
+  startup_max_size_mb: 50
+  startup_allowed_extensions: [".xlsx", ".xls"]
+  temp_directory: "./temp/"
+
+database_update:
+  logs_directory: "./logs/"
+  script_timeout_seconds: 3600
+  progress_update_interval: 1
+  fail_fast: false
+  max_retries: 0
+
+websocket:
+  connection_timeout: 30
+  heartbeat_interval: 30

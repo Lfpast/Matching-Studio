@@ -1,0 +1,23 @@
+name: OKT
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.9
+  - pip
+  - numpy
+  - pandas
+  - pyyaml
+  - scikit-learn
+  - networkx
+  - fastapi
+  - uvicorn
+  - pip:
+    - torch>=2.0.0
+    - transformers>=4.30.0
+    - sentence-transformers>=2.2.0
+    - pydantic>=2.0.0
+    - openpyxl>=3.1.0
+    - python-multipart>=0.0.5
+    - cryptography>=38.0.0
+    - python-jose[cryptography]>=3.3.0
