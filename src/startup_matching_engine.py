@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Dict, Iterable, List, Optional, Tuple
+import re
 
 import networkx as nx
 import numpy as np
@@ -9,6 +10,16 @@ from sklearn.metrics.pairwise import cosine_similarity
 from .embedding_model import TextEmbedder
 from .query_processor import EnhancedQueryProcessor, QueryStatus, QueryValidationResult
 from .startup_preprocessing import StartupRecord
+
+
+_KEYWORD_STOPWORDS = {
+    "a", "an", "the", "and", "or", "but", "nor", "yet", "so",
+    "for", "from", "with", "without", "into", "onto", "to", "of", "in", "on", "at", "by", "as",
+    "is", "are", "was", "were", "be", "been", "being", "do", "does", "did", "can", "could", "should",
+    "would", "will", "may", "might", "must", "this", "that", "these", "those", "it", "its", "their",
+    "there", "here", "what", "which", "when", "where", "who", "whom", "how", "why", "if", "then", "than",
+    "和", "及", "与", "以及", "并且", "或者",
+}
 
 
 class StartupMatchingEngine:
@@ -27,14 +38,39 @@ class StartupMatchingEngine:
         self.config = config or {}
         self.embedding_weights = self.config.get("embedding_weights", {})
         self.semantic_cfg = self.config.get("semantic_matching", {}) if isinstance(self.config, dict) else {}
+        self.keyword_cfg = self.semantic_cfg.get("keyword_matching", {}) if isinstance(self.semantic_cfg, dict) else {}
         self.semantic_weights = self._load_semantic_weights()
-        self.min_field_similarity = float(self.semantic_cfg.get("min_field_similarity", 0.08))
+        self.min_field_similarity = self._safe_float(self.semantic_cfg.get("min_field_similarity", 0.08), 0.08)
+        self.keyword_similarity_threshold = self._safe_float(
+            self.keyword_cfg.get("similarity_threshold", 0.24),
+            0.24,
+        )
+        self.keyword_weight_threshold = self._safe_float(
+            self.keyword_cfg.get("query_weight_threshold", 0.45),
+            0.45,
+        )
+        self.keyword_max_count = max(1, self._safe_int(self.keyword_cfg.get("max_keywords", 6), 6))
+        self._keyword_embedding_cache: Dict[str, np.ndarray] = {}
         self.id_to_index = {record.startup_id: idx for idx, record in enumerate(self.records)}
         (
             self.company_embeddings,
             self.description_embeddings,
             self.category_embeddings,
         ) = self._build_field_embeddings()
+
+    @staticmethod
+    def _safe_float(value: object, default: float) -> float:
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return default
+
+    @staticmethod
+    def _safe_int(value: object, default: int) -> int:
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return default
 
     def _load_semantic_weights(self) -> Dict[str, float]:
         defaults = {
@@ -151,6 +187,163 @@ class StartupMatchingEngine:
         except Exception:
             return []
 
+    @staticmethod
+    def _normalize_keyword_text(text: str) -> str:
+        return re.sub(r"\s+", " ", str(text or "").strip())
+
+    def _is_valid_keyword_token(self, token: str) -> bool:
+        normalized = self._normalize_keyword_text(token)
+        if not normalized:
+            return False
+
+        lowered = normalized.lower()
+        if lowered in _KEYWORD_STOPWORDS:
+            return False
+
+        has_cjk = bool(re.search(r"[\u4e00-\u9fff]", normalized))
+        if has_cjk:
+            return len(normalized) >= 2
+        return len(lowered) >= 3
+
+    def _extract_keyword_candidates(
+        self,
+        query: str,
+        extracted,
+        use_keyword_extraction: bool,
+    ) -> List[Tuple[str, float]]:
+        candidates: Dict[str, Tuple[str, float]] = {}
+
+        if use_keyword_extraction and extracted is not None:
+            for raw_keyword, raw_score in extracted.keywords:
+                token = self._normalize_keyword_text(raw_keyword)
+                if not self._is_valid_keyword_token(token):
+                    continue
+
+                score = self._safe_float(raw_score, 0.0)
+                if score < self.keyword_weight_threshold:
+                    continue
+
+                key = token.lower()
+                previous = candidates.get(key)
+                if previous is None or score > previous[1]:
+                    candidates[key] = (token, score)
+
+        if candidates:
+            ranked = sorted(candidates.values(), key=lambda item: item[1], reverse=True)
+            return ranked[: max(self.keyword_max_count * 2, self.keyword_max_count)]
+
+        source_query = query
+        if use_keyword_extraction and extracted is not None and extracted.filtered_query:
+            source_query = extracted.filtered_query
+
+        for raw in re.split(r"[^a-zA-Z0-9\u4e00-\u9fff]+", str(source_query)):
+            token = self._normalize_keyword_text(raw)
+            if not self._is_valid_keyword_token(token):
+                continue
+
+            key = token.lower()
+            if key in candidates:
+                continue
+            candidates[key] = (token, 0.4)
+
+        ranked = sorted(candidates.values(), key=lambda item: item[1], reverse=True)
+        return ranked[: max(self.keyword_max_count * 2, self.keyword_max_count)]
+
+    @staticmethod
+    def _cosine_dense(left: np.ndarray, right: np.ndarray) -> float:
+        if left.size == 0 or right.size == 0 or left.shape != right.shape:
+            return 0.0
+
+        denominator = float(np.linalg.norm(left) * np.linalg.norm(right))
+        if denominator <= 1e-12:
+            return 0.0
+        return float(np.dot(left, right) / denominator)
+
+    def _get_keyword_embedding(self, token: str) -> np.ndarray:
+        cache_key = token.lower()
+        cached = self._keyword_embedding_cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+        try:
+            embedding = self.embedder.encode([token])[0]
+        except Exception:
+            embedding = np.zeros((0,), dtype=float)
+
+        self._keyword_embedding_cache[cache_key] = embedding
+        return embedding
+
+    def _record_keyword_similarity(self, record_idx: int, token: str) -> float:
+        if record_idx < 0 or record_idx >= len(self.records):
+            return 0.0
+
+        token_vec = self._get_keyword_embedding(token)
+        if token_vec.size == 0:
+            return 0.0
+
+        company_vec = self.company_embeddings[record_idx] if self.company_embeddings.size else np.zeros((0,), dtype=float)
+        desc_vec = self.description_embeddings[record_idx] if self.description_embeddings.size else np.zeros((0,), dtype=float)
+        category_vec = self.category_embeddings[record_idx] if self.category_embeddings.size else np.zeros((0,), dtype=float)
+
+        semantic_score = (
+            (self.semantic_weights["company_name"] * self._cosine_dense(token_vec, company_vec))
+            + (self.semantic_weights["description"] * self._cosine_dense(token_vec, desc_vec))
+            + (self.semantic_weights["category"] * self._cosine_dense(token_vec, category_vec))
+        )
+
+        record = self.records[record_idx]
+        searchable_text = " ".join(
+            [
+                str(record.company_name or ""),
+                str(record.description or ""),
+                " ".join(record.categories or []),
+            ]
+        ).lower()
+        if token.lower() in searchable_text:
+            semantic_score += 0.08
+
+        return max(0.0, float(semantic_score))
+
+    def _build_display_keywords(
+        self,
+        query: str,
+        extracted,
+        use_keyword_extraction: bool,
+        ranked_indices: np.ndarray,
+    ) -> List[Tuple[str, float]]:
+        candidates = self._extract_keyword_candidates(
+            query=query,
+            extracted=extracted,
+            use_keyword_extraction=use_keyword_extraction,
+        )
+        if not candidates:
+            return []
+
+        focus_indices = [int(idx) for idx in ranked_indices[: max(1, min(6, len(ranked_indices)))]]
+        scored: List[Tuple[str, float]] = []
+
+        for token, base_weight in candidates:
+            best_similarity = 0.0
+            for record_idx in focus_indices:
+                best_similarity = max(best_similarity, self._record_keyword_similarity(record_idx, token))
+
+            combined = (0.65 * best_similarity) + (0.35 * float(base_weight))
+            scored.append((token, combined))
+
+        filtered = [
+            (token, score)
+            for token, score in scored
+            if score >= self.keyword_similarity_threshold
+        ]
+        filtered.sort(key=lambda item: item[1], reverse=True)
+
+        if filtered:
+            return filtered[: self.keyword_max_count]
+
+        # Avoid frontend fallback to raw query keywords when semantic filtering is too strict.
+        scored.sort(key=lambda item: item[1], reverse=True)
+        return scored[: min(2, len(scored))]
+
     def _build_match_query(
         self,
         query: str,
@@ -181,39 +374,68 @@ class StartupMatchingEngine:
         if not keywords:
             return []
 
-        company_text = str(record.company_name or "").lower()
+        record_idx = self.id_to_index.get(record.startup_id)
+        if record_idx is None:
+            return []
+
         description_text = str(record.description or "").lower()
-        category_text = " ".join(record.categories or []).lower()
 
         matched: Dict[str, Tuple[str, float]] = {}
         for keyword, base_weight in keywords:
-            token = str(keyword or "").strip()
-            if not token:
+            token = self._normalize_keyword_text(keyword)
+            if not self._is_valid_keyword_token(token):
                 continue
 
-            normalized = token.lower()
-            score = float(base_weight)
-            is_matched = False
+            semantic_score = self._record_keyword_similarity(record_idx, token)
+            score = semantic_score + (0.2 * float(base_weight))
+            in_description = token.lower() in description_text
 
-            if normalized in description_text:
-                score += 0.25
-                is_matched = True
-            if normalized in company_text:
-                score += 0.2
-                is_matched = True
-            if normalized in category_text:
-                score += 0.15
-                is_matched = True
-
-            if not is_matched:
+            # Startup card highlights description text only, so favor description-hit keywords.
+            if in_description:
+                score += 0.1
+            elif semantic_score < (self.keyword_similarity_threshold + 0.06):
                 continue
 
-            previous = matched.get(normalized)
+            if score < self.keyword_similarity_threshold:
+                continue
+
+            key = token.lower()
+            previous = matched.get(key)
             if previous is None or score > previous[1]:
-                matched[normalized] = (token, score)
+                matched[key] = (token, score)
 
         ranked = sorted(matched.values(), key=lambda item: item[1], reverse=True)
-        return [token for token, _score in ranked[:8]]
+        return [token for token, _score in ranked[: self.keyword_max_count]]
+
+    def _collect_result_highlight_keywords(
+        self,
+        startup_results: List[Dict[str, object]],
+        fallback_keywords: List[Tuple[str, float]],
+    ) -> List[Tuple[str, float]]:
+        fallback_map = {
+            self._normalize_keyword_text(keyword).lower(): float(score)
+            for keyword, score in fallback_keywords
+            if self._is_valid_keyword_token(keyword)
+        }
+
+        merged: Dict[str, Tuple[str, float]] = {}
+        for result in startup_results:
+            for raw_token in result.get("matched_keywords", []) or []:
+                token = self._normalize_keyword_text(raw_token)
+                if not self._is_valid_keyword_token(token):
+                    continue
+
+                key = token.lower()
+                score = fallback_map.get(key, self.keyword_similarity_threshold)
+                previous = merged.get(key)
+                if previous is None or score > previous[1]:
+                    merged[key] = (token, score)
+
+        if merged:
+            ranked = sorted(merged.values(), key=lambda item: item[1], reverse=True)
+            return ranked[: self.keyword_max_count]
+
+        return fallback_keywords[: self.keyword_max_count]
 
     def _format_result_item(
         self,
@@ -301,10 +523,12 @@ class StartupMatchingEngine:
 
         ranked_indices = np.argsort(final_scores)[::-1][: max(1, int(top_k))]
 
-        if use_keyword_extraction and extracted is not None:
-            keyword_payload = [(kw, float(score)) for kw, score in extracted.keywords]
-        else:
-            keyword_payload = self._extract_highlight_keywords(query, use_keyword_extraction)
+        keyword_payload = self._build_display_keywords(
+            query=query,
+            extracted=extracted,
+            use_keyword_extraction=use_keyword_extraction,
+            ranked_indices=ranked_indices,
+        )
 
         startup_results: List[Dict[str, object]] = []
         for idx in ranked_indices:
@@ -315,6 +539,11 @@ class StartupMatchingEngine:
                     keywords=keyword_payload,
                 )
             )
+
+        keyword_payload = self._collect_result_highlight_keywords(
+            startup_results=startup_results,
+            fallback_keywords=keyword_payload,
+        )
 
         return {
             "status": validation.status.value,

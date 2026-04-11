@@ -636,6 +636,7 @@ class StartupSearchManager {
     const people = Array.isArray(item.people) ? item.people : [];
     const categories = Array.isArray(item.categories) ? item.categories : [];
     const matchedKeywords = Array.isArray(item.matched_keywords) ? item.matched_keywords : [];
+    const highlightKeywords = sanitizeKeywordList(matchedKeywords.length > 0 ? matchedKeywords : keywords);
     const sourceYearText = item.source_year ? String(item.source_year) : "";
 
     const peopleText = people.length > 0 ? people.join("; ") : "";
@@ -644,11 +645,6 @@ class StartupSearchManager {
 
     const categoryHtml = categories.length > 0
       ? categories.map((category) => `<span class="startup-category-chip">${escapeHtml(String(category))}</span>`).join("")
-      : "";
-
-    const visibleKeywords = matchedKeywords.length > 0 ? matchedKeywords : keywords.slice(0, 6);
-    const keywordHtml = visibleKeywords.length > 0
-      ? visibleKeywords.map((kw) => `<span class="keyword-chip matched">${escapeHtml(String(kw))}</span>`).join("")
       : "";
 
     const peopleRow = peopleText
@@ -664,7 +660,7 @@ class StartupSearchManager {
       : "";
 
     const descriptionRow = descriptionText
-      ? `<p class="startup-description"><strong>Description:</strong> ${highlightText(descriptionText, keywords)}</p>`
+      ? `<p class="startup-description"><strong>Description:</strong> ${highlightText(descriptionText, highlightKeywords)}</p>`
       : "";
 
     card.innerHTML = `
@@ -675,7 +671,6 @@ class StartupSearchManager {
       ${sourceYearRow}
       ${descriptionRow}
       ${categoryHtml ? `<div class="startup-category-list">${categoryHtml}</div>` : ""}
-      ${keywordHtml ? `<div class="keyword-chips startup-keyword-chips">${keywordHtml}</div>` : ""}
       <div class="kpi startup-kpi"><span>Score: ${Number(item.score || 0).toFixed(3)}</span></div>
     `;
 
@@ -685,7 +680,7 @@ class StartupSearchManager {
     }
 
     card.addEventListener("click", () => {
-      this.openStartupDetailModal(item, card, keywords);
+      this.openStartupDetailModal(item, card, highlightKeywords);
     });
 
     return card;
