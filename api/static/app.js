@@ -4,6 +4,7 @@ const professorResultsHint = document.getElementById("professorResultsHint");
 const professorStatusLabel = document.getElementById("professorApiStatus");
 const startupStatusLabel = document.getElementById("startupApiStatus");
 const professorEmptyState = document.getElementById("professorEmptyState");
+const professorPage = document.getElementById("professor-page");
 let currentDeepTechModal = null;
 const SOURCE_ORDER = { bmh: 0, eas: 1, mes: 2 };
 const HIGHLIGHT_STOPWORDS = new Set([
@@ -156,6 +157,12 @@ function showProfessorEmptyState() {
 
 function hideProfessorEmptyState() {
   if (professorEmptyState) professorEmptyState.classList.add("hidden");
+}
+
+function unlockProfessorResults() {
+  if (!professorPage || !professorPage.classList.contains("search-locked")) return;
+  professorPage.classList.remove("search-locked");
+  professorPage.classList.add("search-unlocked");
 }
 
 function createTagList(items, className) {
@@ -375,7 +382,7 @@ function renderProfessorResults(results, query, extractedKeywords = []) {
       deeptechHtml = `
         <section class="deeptech-section">
           <p><strong>DeepTech Projects</strong></p>
-          <div class="${deeptechListClass}">${chips}</div>
+          <div class="${deeptechListClass}" data-lenis-prevent>${chips}</div>
         </section>
       `;
     }
@@ -495,6 +502,7 @@ professorForm.addEventListener("submit", async (event) => {
     }
 
     const data = await response.json();
+    unlockProfessorResults();
     const extractedKeywords = Array.isArray(data.keywords)
       ? data.keywords.map((item) => (typeof item === "string" ? item : item.keyword))
       : [];
@@ -1984,7 +1992,7 @@ function initPremiumUI() {
     });
 
     const addLenisPrevent = () => {
-      document.querySelectorAll(".modal-content, .deeptech-modal-content, .startup-modal-content").forEach(el => {
+      document.querySelectorAll(".modal-content, .deeptech-modal-content, .startup-modal-content, .deeptech-chip-list.has-scroll").forEach(el => {
         el.setAttribute("data-lenis-prevent", "");
       });
     };
@@ -2053,7 +2061,7 @@ function initPremiumUI() {
       }, "-=0.06")
       .add(() => {
         animateHero({ page: document.querySelector(".page.active") });
-      }, "-=0.48");
+      }, "-=0.18");
   } else {
     window.__preloaderHandled = true;
     animateHero({ page: activePage });
@@ -2062,6 +2070,12 @@ function initPremiumUI() {
 
 function primeHeroIntro(activePage) {
   if (typeof gsap === "undefined" || !activePage) return;
+
+  const isProfessorPage = activePage.id === "professor-page";
+  const titleOffset = isProfessorPage ? "132%" : "105%";
+  const fallbackTitleY = isProfessorPage ? 30 : 22;
+  const subtitleY = isProfessorPage ? 30 : 16;
+  const heroCardY = isProfessorPage ? 44 : 24;
 
   const h1 = activePage.querySelector("h1");
   const subtitle = activePage.querySelector(".subtitle");
@@ -2075,21 +2089,21 @@ function primeHeroIntro(activePage) {
       }
       const chars = h1.querySelectorAll(".char");
       if (chars.length > 0) {
-        gsap.set(chars, { y: "105%", opacity: 0, rotateZ: 4 });
+        gsap.set(chars, { y: titleOffset, opacity: 0, rotateZ: 4 });
       } else {
-        gsap.set(h1, { y: 22, opacity: 0 });
+        gsap.set(h1, { y: fallbackTitleY, opacity: 0 });
       }
     } else {
-      gsap.set(h1, { y: 22, opacity: 0 });
+      gsap.set(h1, { y: fallbackTitleY, opacity: 0 });
     }
   }
 
   if (subtitle) {
-    gsap.set(subtitle, { y: 16, opacity: 0 });
+    gsap.set(subtitle, { y: subtitleY, opacity: 0 });
   }
 
   if (heroCard) {
-    gsap.set(heroCard, { y: 24, opacity: 0 });
+    gsap.set(heroCard, { y: heroCardY, opacity: 0 });
   }
 }
 
@@ -2098,6 +2112,13 @@ function animateHero(options = {}) {
 
   const activePage = options.page || document.querySelector(".page.active");
   if (!activePage) return null;
+
+  const isProfessorPage = activePage.id === "professor-page";
+  const titleDuration = isProfessorPage ? 0.92 : 0.82;
+  const subtitleStart = isProfessorPage ? 0.1 : 0.06;
+  const subtitleDuration = isProfessorPage ? 0.68 : 0.62;
+  const cardStart = isProfessorPage ? 0.16 : 0.1;
+  const cardDuration = isProfessorPage ? 0.76 : 0.68;
 
   const h1 = activePage.querySelector("h1");
   const subtitle = activePage.querySelector(".subtitle");
@@ -2114,7 +2135,7 @@ function animateHero(options = {}) {
         y: "0%",
         opacity: 1,
         rotateZ: 0,
-        duration: 0.82,
+        duration: titleDuration,
         ease: "expo.out",
         stagger: 0.012,
       }, 0);
@@ -2122,7 +2143,7 @@ function animateHero(options = {}) {
       tl.to(h1, {
         y: 0,
         opacity: 1,
-        duration: 0.72,
+        duration: titleDuration,
         ease: "expo.out",
       }, 0);
     }
@@ -2132,18 +2153,18 @@ function animateHero(options = {}) {
     tl.to(subtitle, {
       y: 0,
       opacity: 1,
-      duration: 0.62,
+      duration: subtitleDuration,
       ease: "power2.out",
-    }, 0.06);
+    }, subtitleStart);
   }
 
   if (heroCard) {
     tl.to(heroCard, {
       y: 0,
       opacity: 1,
-      duration: 0.68,
+      duration: cardDuration,
       ease: "expo.out",
-    }, 0.1);
+    }, cardStart);
   }
 
   return tl;
