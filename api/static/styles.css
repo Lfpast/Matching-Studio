@@ -2,7 +2,7 @@
   --bg: #030406;
   --surface: rgba(18, 22, 28, 0.6);
   --surface-light: rgba(28, 36, 46, 0.7);
-  --accent: #e8d08c;
+  --accent: #fdea7b;
   --button-gradient: linear-gradient(135deg, #1f2731 0%, #161c23 100%);
   --button-gradient-hover: linear-gradient(135deg, #324052 0%, #212933 100%);
   --button-text: #fff;
@@ -92,10 +92,33 @@ body::after {
   will-change: transform, opacity;
 }
 .preloader-brand {
+  display: inline-block;
   font-family: "IBM Plex Mono", monospace;
-  letter-spacing: 0.2em;
-  font-size: clamp(1rem, 2vw, 1.5rem);
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  font-size: clamp(1.4rem, 4.8vw, 4.2rem);
+  font-weight: 700;
+  line-height: 1.08;
   opacity: 0;
+  color: transparent;
+  background-image: linear-gradient(
+    112deg,
+    #596377 0%,
+    #aab4c6 15%,
+    #f8fcff 30%,
+    #b9c2d4 44%,
+    #6b7487 60%,
+    #e7edf7 78%,
+    #7a8398 100%
+  );
+  background-size: 100% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow:
+    0 1px 1px rgba(255, 255, 255, 0.18),
+    0 6px 14px rgba(152, 176, 212, 0.16);
+  filter: saturate(106%);
 }
 .preloader-progress {
   width: 200px;
@@ -1663,6 +1686,14 @@ footer {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px rgba(244, 211, 94, 0.16), 0 14px 32px rgba(0, 0, 0, 0.18);
   transform: translateY(-3px) scale(1.01);
+}
+
+#startupApiStatus {
+  color: var(--accent);
+}
+
+#professorApiStatus {
+  color: var(--accent)
 }
 
 .upload-drop-hint {

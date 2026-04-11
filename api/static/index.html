@@ -113,7 +113,7 @@
           </div>
           <div class="hero-card">
             <div class="card-header">
-              <span class="status" id="professorApiStatus">Checking API...</span>
+              <span class="status" id="professorApiStatus">API online</span>
             </div>
             <form id="professorSearchForm">
               <label for="professorQuery">Enterprise query</label>
@@ -478,12 +478,16 @@
 
       window.addEventListener("load", function () {
         window.setTimeout(function () {
+          if (window.__preloaderHandled) {
+            return;
+          }
+
           const preloader = document.getElementById("preloader");
           if (!preloader || !preloader.parentElement) {
             return;
           }
 
-          preloader.style.transition = "opacity 0.35s ease";
+          preloader.style.transition = "opacity 1.2s ease";
           preloader.style.opacity = "0";
           preloader.style.pointerEvents = "none";
 
@@ -492,7 +496,7 @@
               preloader.remove();
             }
           }, 380);
-        }, 3800);
+        }, 5200);
       });
     </script>
     <script src="/static/app.js"></script>

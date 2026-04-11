@@ -2003,66 +2003,150 @@ function initPremiumUI() {
     requestAnimationFrame(raf);
   }
 
-  // 2. Preloader & Intro Animation
+  // 2. Preloader & Intro Animation (single seamless timeline)
   const preloader = document.getElementById("preloader");
-  if(preloader && typeof gsap !== "undefined") {
-    gsap.timeline()
-      .to(".preloader-brand", { opacity: 1, duration: 0.8, ease: "power2.out" })
-      .to(".preloader-bar", { width: "100%", duration: 1.0, ease: "power4.inOut" })
-      .to(preloader, { y: "-100%", duration: 0.8, ease: "expo.inOut", delay: 0.1 })
-      .call(() => preloader.remove())
+  const activePage = document.querySelector(".page.active");
+
+  if (typeof gsap !== "undefined") {
+    primeHeroIntro(activePage);
+  }
+
+  if (preloader && typeof gsap !== "undefined") {
+    window.__preloaderHandled = true;
+
+    const fallbackTimer = window.setTimeout(() => {
+      if (preloader.parentElement) {
+        preloader.remove();
+      }
+      animateHero({ page: document.querySelector(".page.active") });
+    }, 5200);
+
+    gsap.timeline({
+      defaults: { overwrite: "auto" },
+      onComplete: () => {
+        window.clearTimeout(fallbackTimer);
+        if (preloader.parentElement) {
+          preloader.remove();
+        }
+      },
+    })
+      .to(".preloader-brand", {
+        opacity: 1,
+        y: 0,
+        duration: 0.55,
+        ease: "power2.out",
+      })
+      .to(".preloader-progress", {
+        opacity: 1,
+        duration: 0.2,
+        ease: "power1.out",
+      }, "<")
+      .to(".preloader-bar", {
+        width: "100%",
+        duration: 0.85,
+        ease: "power3.inOut",
+      }, "-=0.04")
+      .to(preloader, {
+        yPercent: -100,
+        duration: 0.62,
+        ease: "expo.inOut",
+      }, "-=0.06")
       .add(() => {
-        animateHero();
-      }, "-=0.3");
+        animateHero({ page: document.querySelector(".page.active") });
+      }, "-=0.48");
   } else {
-    animateHero();
+    window.__preloaderHandled = true;
+    animateHero({ page: activePage });
   }
 }
 
-function animateHero() {
-  if (typeof gsap === "undefined") return;
-  const activePage = document.querySelector(".page.active");
-  if (!activePage) return;
+function primeHeroIntro(activePage) {
+  if (typeof gsap === "undefined" || !activePage) return;
 
   const h1 = activePage.querySelector("h1");
   const subtitle = activePage.querySelector(".subtitle");
   const heroCard = activePage.querySelector(".hero-card");
 
-  // Typographic chunking using SplitType
-  if(h1 && !h1.classList.contains("split-done") && typeof SplitType !== "undefined") {
-    const titleSplit = new SplitType(h1, { types: "chars, words" });
-    h1.classList.add("split-done");
-    
-    gsap.fromTo(titleSplit.chars, 
-      { y: "100%", opacity: 0, rotateZ: 5 },
-      { y: "0%", opacity: 1, rotateZ: 0, duration: 1.0, ease: "expo.out", stagger: 0.015 }
-    );
-  } else if (h1 && !h1.classList.contains("split-done")) {
-    gsap.fromTo(h1, { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 1.0, ease: "expo.out" });
-    h1.classList.add("split-done");
+  if (h1) {
+    if (typeof SplitType !== "undefined") {
+      const existingChars = h1.querySelectorAll(".char");
+      if (existingChars.length === 0) {
+        h1._splitInstance = new SplitType(h1, { types: "chars, words" });
+      }
+      const chars = h1.querySelectorAll(".char");
+      if (chars.length > 0) {
+        gsap.set(chars, { y: "105%", opacity: 0, rotateZ: 4 });
+      } else {
+        gsap.set(h1, { y: 22, opacity: 0 });
+      }
+    } else {
+      gsap.set(h1, { y: 22, opacity: 0 });
+    }
   }
 
-  if(subtitle && !subtitle.classList.contains("animated")) {
-    subtitle.classList.add("animated");
-    gsap.fromTo(subtitle,
-      { y: 20, opacity: 0 },
-      { y: 0, opacity: 1, duration: 1.0, ease: "power3.out", delay: 0.15 }
-    );
+  if (subtitle) {
+    gsap.set(subtitle, { y: 16, opacity: 0 });
   }
 
-  if(heroCard && !heroCard.classList.contains("animated")) {
-    heroCard.classList.add("animated");
-    gsap.fromTo(heroCard, {
-      y: 30,
-      opacity: 0,
-    }, {
+  if (heroCard) {
+    gsap.set(heroCard, { y: 24, opacity: 0 });
+  }
+}
+
+function animateHero(options = {}) {
+  if (typeof gsap === "undefined") return null;
+
+  const activePage = options.page || document.querySelector(".page.active");
+  if (!activePage) return null;
+
+  const h1 = activePage.querySelector("h1");
+  const subtitle = activePage.querySelector(".subtitle");
+  const heroCard = activePage.querySelector(".hero-card");
+
+  primeHeroIntro(activePage);
+
+  const tl = gsap.timeline({ defaults: { overwrite: "auto" } });
+
+  if (h1) {
+    const chars = h1.querySelectorAll(".char");
+    if (chars.length > 0) {
+      tl.to(chars, {
+        y: "0%",
+        opacity: 1,
+        rotateZ: 0,
+        duration: 0.82,
+        ease: "expo.out",
+        stagger: 0.012,
+      }, 0);
+    } else {
+      tl.to(h1, {
+        y: 0,
+        opacity: 1,
+        duration: 0.72,
+        ease: "expo.out",
+      }, 0);
+    }
+  }
+
+  if (subtitle) {
+    tl.to(subtitle, {
       y: 0,
       opacity: 1,
-      duration: 1.2,
-      ease: "expo.out",
-      delay: 0.2
-    });
+      duration: 0.62,
+      ease: "power2.out",
+    }, 0.06);
   }
+
+  if (heroCard) {
+    tl.to(heroCard, {
+      y: 0,
+      opacity: 1,
+      duration: 0.68,
+      ease: "expo.out",
+    }, 0.1);
+  }
+
+  return tl;
 }
 
 // Hook into results rendering to apply staggered scroll animations
@@ -2110,17 +2194,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const originalNavigateToPage = SidebarManager.prototype.navigateToPage;
         SidebarManager.prototype.navigateToPage = function(pageType) {
             originalNavigateToPage.call(this, pageType);
-            // reset split-done so it replays
             const activePage = document.querySelector(".page.active");
-            if (activePage) {
-                const h1 = activePage.querySelector("h1");
-                const subtitle = activePage.querySelector(".subtitle");
-                const heroCard = activePage.querySelector(".hero-card");
-                if (h1) h1.classList.remove("split-done");
-                if (subtitle) subtitle.classList.remove("animated");
-                if (heroCard) heroCard.classList.remove("animated");
-            }
-            if (typeof animateHero === "function") animateHero();
+      if (typeof animateHero === "function") animateHero({ page: activePage });
         };
     }
 });
