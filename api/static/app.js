@@ -5,6 +5,7 @@ const professorStatusLabel = document.getElementById("professorApiStatus");
 const startupStatusLabel = document.getElementById("startupApiStatus");
 const professorEmptyState = document.getElementById("professorEmptyState");
 const professorPage = document.getElementById("professor-page");
+const startupPage = document.getElementById("startup-page");
 let currentDeepTechModal = null;
 const SOURCE_ORDER = { bmh: 0, eas: 1, mes: 2 };
 const HIGHLIGHT_STOPWORDS = new Set([
@@ -163,6 +164,12 @@ function unlockProfessorResults() {
   if (!professorPage || !professorPage.classList.contains("search-locked")) return;
   professorPage.classList.remove("search-locked");
   professorPage.classList.add("search-unlocked");
+}
+
+function unlockStartupResults() {
+  if (!startupPage || !startupPage.classList.contains("search-locked")) return;
+  startupPage.classList.remove("search-locked");
+  startupPage.classList.add("search-unlocked");
 }
 
 function createTagList(items, className) {
@@ -572,6 +579,7 @@ class StartupSearchManager {
       }
 
       const data = await response.json();
+      unlockStartupResults();
       const extractedKeywords = Array.isArray(data.keywords)
         ? data.keywords.map((item) => (typeof item === "string" ? item : item.keyword))
         : [];
@@ -2071,11 +2079,12 @@ function initPremiumUI() {
 function primeHeroIntro(activePage) {
   if (typeof gsap === "undefined" || !activePage) return;
 
-  const isProfessorPage = activePage.id === "professor-page";
-  const titleOffset = isProfessorPage ? "132%" : "105%";
-  const fallbackTitleY = isProfessorPage ? 30 : 22;
-  const subtitleY = isProfessorPage ? 30 : 16;
-  const heroCardY = isProfessorPage ? 44 : 24;
+  const isSearchHeroPage =
+    activePage.id === "professor-page" || activePage.id === "startup-page";
+  const titleOffset = isSearchHeroPage ? "132%" : "105%";
+  const fallbackTitleY = isSearchHeroPage ? 30 : 22;
+  const subtitleY = isSearchHeroPage ? 30 : 16;
+  const heroCardY = isSearchHeroPage ? 44 : 24;
 
   const h1 = activePage.querySelector("h1");
   const subtitle = activePage.querySelector(".subtitle");
@@ -2113,12 +2122,13 @@ function animateHero(options = {}) {
   const activePage = options.page || document.querySelector(".page.active");
   if (!activePage) return null;
 
-  const isProfessorPage = activePage.id === "professor-page";
-  const titleDuration = isProfessorPage ? 0.92 : 0.82;
-  const subtitleStart = isProfessorPage ? 0.1 : 0.06;
-  const subtitleDuration = isProfessorPage ? 0.68 : 0.62;
-  const cardStart = isProfessorPage ? 0.16 : 0.1;
-  const cardDuration = isProfessorPage ? 0.76 : 0.68;
+  const isSearchHeroPage =
+    activePage.id === "professor-page" || activePage.id === "startup-page";
+  const titleDuration = isSearchHeroPage ? 0.92 : 0.82;
+  const subtitleStart = isSearchHeroPage ? 0.1 : 0.06;
+  const subtitleDuration = isSearchHeroPage ? 0.68 : 0.62;
+  const cardStart = isSearchHeroPage ? 0.16 : 0.1;
+  const cardDuration = isSearchHeroPage ? 0.76 : 0.68;
 
   const h1 = activePage.querySelector("h1");
   const subtitle = activePage.querySelector(".subtitle");
