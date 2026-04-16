@@ -821,6 +821,14 @@ mark {
 
 .startup-result-card {
     cursor: pointer;
+    height: 500px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.startup-result-card .badge {
+    align-self: flex-start;
 }
 
 .startup-meta-row {
@@ -835,6 +843,15 @@ mark {
     color: var(--text-soft);
     font-size: 13px;
     line-height: 1.6;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 7;
+    line-clamp: 7;
+    overflow: hidden;
+}
+
+.startup-people-text {
+    white-space: pre-line;
 }
 
 .startup-category-list {
@@ -861,6 +878,7 @@ mark {
 
 .startup-kpi {
     grid-template-columns: 1fr;
+    margin-top: auto;
 }
 
 .deeptech-section {

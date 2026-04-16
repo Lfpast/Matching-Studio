@@ -639,7 +639,7 @@ class StartupSearchManager {
         const highlightKeywords = sanitizeKeywordList(matchedKeywords.length > 0 ? matchedKeywords : keywords);
         const sourceYearText = item.source_year ? String(item.source_year) : "";
 
-        const peopleText = people.length > 0 ? people.join("; ") : "";
+        const peopleText = people.length > 0 ? people.join("\n") : "";
         const refCode = String(item.ref_code || "").trim();
         const descriptionText = String(item.description || "").trim();
 
@@ -648,7 +648,7 @@ class StartupSearchManager {
             : "";
 
         const peopleRow = peopleText
-            ? `<div class="startup-meta-row"><strong>People:</strong> ${escapeHtml(peopleText)}</div>`
+            ? `<div class="startup-meta-row"><strong>People:</strong> <span class="startup-people-text">${escapeHtml(peopleText)}</span></div>`
             : "";
 
         const refCodeRow = refCode
@@ -757,7 +757,7 @@ class StartupSearchManager {
         if (item.ref_code) infoGridRows.push(`<div class="startup-info-item"><span class="label">Ref. Code</span><span class="value">${escapeHtml(String(item.ref_code))}</span></div>`);
         if (item.funding) infoGridRows.push(`<div class="startup-info-item"><span class="label">Funding</span><span class="value">${escapeHtml(String(item.funding))}</span></div>`);
         if (item.background_year) infoGridRows.push(`<div class="startup-info-item"><span class="label">Background (Year)</span><span class="value">${escapeHtml(String(item.background_year))}</span></div>`);
-        if (people.length > 0) infoGridRows.push(`<div class="startup-info-item"><span class="label">People</span><span class="value">${escapeHtml(people.join("; "))}</span></div>`);
+        if (people.length > 0) infoGridRows.push(`<div class="startup-info-item"><span class="label">People</span><span class="value startup-people-text">${escapeHtml(people.join("\n"))}</span></div>`);
 
         if (infoGridRows.length > 0) {
             sectionRows.push(`
