@@ -334,19 +334,25 @@ html.custom-cursor-enabled .prof-name-link {
     clip-path: polygon(0 0, 100% 0, 100% 100%, 0% 100%);
 }
 
-/* Glassmorphism hero-card */
+/* Glassmorphism hero-card - iOS Glass Style */
 .hero-card {
-    background: rgba(16, 22, 32, 0.4);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.01));
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 24px;
     padding: 40px;
-    box-shadow: 0 40px 80px rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.15), 0 32px 64px rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(48px) saturate(180%);
+    -webkit-backdrop-filter: blur(48px) saturate(180%);
     margin-top: 0;
     transform: translateY(40px);
     opacity: 0;
     will-change: transform, opacity;
+    animation: glassBreathe 8s ease-in-out infinite alternate;
+}
+
+@keyframes glassBreathe {
+    0% { box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1), 0 24px 48px rgba(0, 0, 0, 0.3); }
+    100% { box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.2), 0 32px 64px rgba(0, 0, 0, 0.5); }
 }
 
 /* Premium form fields */
@@ -608,16 +614,27 @@ main {
 }
 
 .result-card {
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 20px;
     padding: 32px;
-    box-shadow: var(--shadow);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.15), var(--shadow);
+    backdrop-filter: blur(40px) saturate(150%);
+    -webkit-backdrop-filter: blur(40px) saturate(150%);
     transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.6s cubic-bezier(0.16, 1, 0.3, 1), background 0.6s ease;
     will-change: transform;
     cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.result-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%; width: 50%; height: 100%;
+    background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.08), transparent);
+    transform: skewX(-20deg);
+    transition: all 0.7s ease;
 }
 
 .result-card h3 {
@@ -643,10 +660,15 @@ main {
 }
 
 .result-card:hover {
-    transform: translateY(-8px) scale(1.02);
-    background: rgba(255, 255, 255, 0.04);
-    box-shadow: 0 40px 60px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.1);
+    transform: translateY(-8px) scale(1.01);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%);
+    box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.25), 0 40px 60px rgba(0, 0, 0, 0.6);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.result-card:hover::before {
+    left: 200%;
+    transition: left 0.7s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @keyframes rise {
@@ -1445,21 +1467,25 @@ footer {
 .hamburger-btn {
     display: flex;
     flex-direction: column;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 8px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+    backdrop-filter: blur(24px) saturate(150%);
+    -webkit-backdrop-filter: blur(24px) saturate(150%);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
     cursor: pointer;
-    padding: 10px 12px;
-    gap: 5px;
+    padding: 12px 14px;
+    gap: 6px;
     margin-bottom: 20px;
-    transition: all 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     width: fit-content;
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1);
 }
 
 .hamburger-btn:hover {
-    background: rgba(255, 255, 255, 0.15);
-    box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
-    border-color: rgba(255, 255, 255, 0.4);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.05));
+    box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.2), 0 4px 12px rgba(0, 0, 0, 0.2);
+    border-color: rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
 }
 
 .hamburger-btn span {
@@ -1476,10 +1502,12 @@ footer {
     top: 0;
     width: 350px;
     height: 100vh;
-    background: rgba(20, 20, 40, 0.95);
-    backdrop-filter: blur(10px);
+    background: linear-gradient(135deg, rgba(20, 26, 34, 0.75), rgba(31, 38, 51, 0.5));
+    backdrop-filter: blur(48px) saturate(180%);
+    -webkit-backdrop-filter: blur(48px) saturate(180%);
+    box-shadow: inset -1px 0 2px rgba(255, 255, 255, 0.1), 5px 0 25px rgba(0, 0, 0, 0.5);
     z-index: 998;
-    transition: left 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: left 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     border-right: 1px solid rgba(255, 255, 255, 0.1);
     display: flex;
     flex-direction: column;
@@ -1587,14 +1615,31 @@ footer {
 }
 
 .modal-content {
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(10px);
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.8));
+    backdrop-filter: blur(32px) saturate(180%);
     padding: 40px;
-    border-radius: 16px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    border-radius: 24px;
+    box-shadow: inset 0 2px 4px rgba(255, 255, 255, 0.5), 0 24px 64px rgba(0, 0, 0, 0.4);
     max-width: 400px;
     width: 90%;
     animation: slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.modal-content::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%; width: 50%; height: 100%;
+    background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transform: skewX(-20deg);
+    animation: flowHighlight 6s infinite;
+    pointer-events: none;
+}
+
+@keyframes flowHighlight {
+    0% { left: -100%; }
+    20%, 100% { left: 200%; }
 }
 
 .modal.hidden .modal-content {
@@ -1821,14 +1866,14 @@ footer {
 }
 
 .upload-window {
-    background: rgba(255, 255, 255, 0.7);
-    backdrop-filter: blur(10px);
-    border: 2px dashed rgba(255, 255, 255, 0.3);
-    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.4));
+    backdrop-filter: blur(32px) saturate(150%);
+    border: 2px dashed rgba(255, 255, 255, 0.8);
+    border-radius: 16px;
     padding: 40px;
     text-align: center;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     min-height: 200px;
     display: flex;
     flex-direction: column;
@@ -1839,20 +1884,36 @@ footer {
     width: 100%;
     flex: 1 1 auto;
     box-sizing: border-box;
+    overflow: hidden;
+    box-shadow: inset 0 2px 6px rgba(255, 255, 255, 0.5), 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+.upload-window::before {
+    content: '';
+    position: absolute;
+    top: -50%; left: -50%; width: 200%; height: 200%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.6) 0%, transparent 60%);
+    transform: scale(0);
+    transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: none;
+}
+
+.upload-window:hover::before {
+    transform: scale(1);
 }
 
 .upload-window:hover {
-    background: rgba(255, 255, 255, 0.85);
-    border-color: rgba(255, 255, 255, 0.6);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.5));
+    border-color: rgba(255, 255, 255, 0.9);
+    transform: translateY(-3px);
+    box-shadow: inset 0 2px 8px rgba(255, 255, 255, 0.7), 0 12px 32px rgba(0, 0, 0, 0.2);
 }
 
 .upload-window.drag-over {
-    background: rgba(255, 255, 255, 0.94);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 1), rgba(255, 255, 255, 0.8));
     border-color: var(--accent);
-    box-shadow: 0 0 0 2px rgba(244, 211, 94, 0.16), 0 14px 32px rgba(0, 0, 0, 0.18);
-    transform: translateY(-3px) scale(1.01);
+    box-shadow: inset 0 4px 12px rgba(255, 255, 255, 1), 0 0 0 2px rgba(244, 211, 94, 0.16), 0 20px 48px rgba(0, 0, 0, 0.25);
+    transform: translateY(-3px) scale(1.02);
 }
 
 #startupApiStatus {
