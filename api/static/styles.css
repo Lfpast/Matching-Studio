@@ -1498,17 +1498,17 @@ footer {
 
 .sidebar {
     position: fixed;
-    left: -350px;
+    left: -320px;
     top: 0;
-    width: 350px;
+    width: 320px;
     height: 100vh;
-    background: linear-gradient(135deg, rgba(20, 26, 34, 0.75), rgba(31, 38, 51, 0.5));
-    backdrop-filter: blur(48px) saturate(180%);
-    -webkit-backdrop-filter: blur(48px) saturate(180%);
-    box-shadow: inset -1px 0 2px rgba(255, 255, 255, 0.1), 5px 0 25px rgba(0, 0, 0, 0.5);
-    z-index: 998;
-    transition: left 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-    border-right: 1px solid rgba(255, 255, 255, 0.1);
+    background: linear-gradient(135deg, rgba(20, 26, 34, 0.65), rgba(11, 15, 21, 0.8));
+    backdrop-filter: blur(64px) saturate(200%);
+    -webkit-backdrop-filter: blur(64px) saturate(200%);
+    box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.06), 20px 0 40px rgba(0, 0, 0, 0.4);
+    z-index: 1000;
+    transition: left 0.45s cubic-bezier(0.32, 1.1, 0.53, 1);
+    border-right: none;
     display: flex;
     flex-direction: column;
     overflow-y: auto;
@@ -1520,75 +1520,101 @@ footer {
 
 .sidebar-nav {
     flex: 1;
-    padding: 30px 0;
+    padding: 40px 0;
 }
 
 .sidebar-title {
-    font-size: 14px;
-    font-weight: 700;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 11px;
+    font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 1px;
-    color: rgba(255, 255, 255, 0.5);
-    padding: 0 20px;
+    letter-spacing: 0.15em;
+    color: rgba(255, 255, 255, 0.4);
+    padding: 0 24px;
     margin-bottom: 20px;
 }
 
 .nav-list {
     list-style: none;
-    padding: 0;
+    padding: 0 12px;
     margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
 }
 
 .nav-link {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 15px 20px;
-    color: rgba(255, 255, 255, 0.7);
+    gap: 14px;
+    padding: 12px 16px;
+    color: var(--text-soft);
     text-decoration: none;
-    transition: all 0.2s ease;
-    border-left: 3px solid transparent;
+    border-radius: 12px;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    border: 1px solid transparent;
     font-size: 15px;
     font-weight: 500;
 }
 
 .nav-link:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: #fff;
-    border-left-color: #667eea;
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text);
+    transform: translateX(4px);
 }
 
 .nav-link.active {
-    background: rgba(102, 126, 234, 0.15);
-    color: #fff;
-    border-left-color: #667eea;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.03));
+    color: var(--accent);
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.15), 0 4px 16px rgba(0, 0, 0, 0.2);
+    font-weight: 600;
 }
 
 .nav-icon {
-    font-size: 18px;
+    font-size: 20px;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
 }
 
 .sidebar-footer {
-    padding: 20px;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 24px 12px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .logout-btn {
     width: 100%;
-    padding: 10px;
-    background: rgba(220, 53, 69, 0.05);
-    color: #dc3545;
-    border: 1px solid #dc3545;
-    border-radius: 6px;
+    padding: 14px 16px;
+    background: transparent;
+    color: #ff6b6b;
+    border: 1px solid rgba(255, 107, 107, 0.2);
+    border-radius: 12px;
     cursor: pointer;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 600;
-    transition: all 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    text-align: left;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logout-btn::after {
+    content: "→";
+    opacity: 0.5;
+    transition: opacity 0.3s, transform 0.3s;
 }
 
 .logout-btn:hover {
-    background: rgba(220, 53, 69, 0.15);
-    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.2);
+    background: linear-gradient(135deg, rgba(255, 107, 107, 0.15), rgba(255, 107, 107, 0.05));
+    border-color: rgba(255, 107, 107, 0.4);
+    box-shadow: inset 0 1px 2px rgba(255, 107, 107, 0.2), 0 8px 16px rgba(0, 0, 0, 0.2);
+    color: #ff8e8e;
+    transform: translateY(-2px);
+}
+
+.logout-btn:hover::after {
+    opacity: 1;
+    transform: translateX(4px);
 }
 
 /* 模态框 */
