@@ -1,19 +1,19 @@
 :root {
-    --bg: #030406;
-    --surface: rgba(18, 22, 28, 0.6);
-    --surface-light: rgba(28, 36, 46, 0.7);
-    --accent: #fdea7b;
-    --button-gradient: linear-gradient(135deg, #1f2731 0%, #161c23 100%);
-    --button-gradient-hover: linear-gradient(135deg, #324052 0%, #212933 100%);
-    --button-text: #fff;
-    --accent-2: #80bfff;
-    --accent-3: #c2acff;
-    --text: #f0f0f2;
-    --text-soft: #c6ced8;
-    --muted: #8c96a3;
-    --border: rgba(255, 255, 255, 0.05);
-    --shadow: 0 30px 60px rgba(0, 0, 0, 0.5);
-    --highlight: rgba(232, 208, 140, 0.1);
+    --bg: #0b0f15;
+    --surface: rgba(24, 30, 40, 0.65);
+    --surface-light: rgba(34, 42, 54, 0.75);
+    --accent: #fce87b;
+    --button-gradient: linear-gradient(135deg, #2a3544 0%, #181f29 100%);
+    --button-gradient-hover: linear-gradient(135deg, #364457 0%, #202936 100%);
+    --button-text: #ffffff;
+    --accent-2: #8bc4ff;
+    --accent-3: #cbb8ff;
+    --text: #f4f4f5;
+    --text-soft: #cdd5df;
+    --muted: #95a0b1;
+    --border: rgba(255, 255, 255, 0.08);
+    --shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
+    --highlight: rgba(244, 211, 94, 0.12);
     font-size: min(max(1rem, 1vw), 1.25rem);
 }
 
@@ -364,8 +364,8 @@ textarea,
 .field input {
     width: 100%;
     border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.03);
     color: var(--text);
     padding: 16px;
     margin-bottom: 12px;
@@ -415,24 +415,25 @@ button[type="submit"] {
     width: 100%;
     padding: 20px;
     font-size: 1.1rem;
-    font-weight: 600;
+    font-weight: 700;
     letter-spacing: 0.05em;
     text-transform: uppercase;
-    background: var(--button-gradient);
-    color: var(--button-text);
+    background: linear-gradient(135deg, var(--accent) 0%, #e2c244 100%);
+    color: #1a1a1a;
     border: none;
     border-radius: 12px;
     margin-top: 32px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease;
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease, background 0.3s ease;
+    box-shadow: 0 4px 14px rgba(244, 211, 94, 0.2);
 }
 
 button[type="submit"]:hover {
     transform: translateY(-4px);
-    background: var(--button-gradient-hover);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+    background: linear-gradient(135deg, #fff29c 0%, var(--accent) 100%);
+    box-shadow: 0 16px 32px rgba(244, 211, 94, 0.4);
 }
 
 .field-checkbox {
@@ -1904,9 +1905,9 @@ footer {
 }
 
 .upload-btn {
-    background: transparent;
-    color: #333;
-    border: 1.5px solid #333;
+    background: rgba(255, 255, 255, 0.08); /* Brighter standard button */
+    color: var(--text);
+    border: 1px solid rgba(255, 255, 255, 0.2);
     padding: 12px 24px;
     border-radius: 12px;
     cursor: pointer;
@@ -1919,9 +1920,10 @@ footer {
 }
 
 .upload-btn:hover:not(:disabled) {
-    background: rgba(0, 0, 0, 0.05);
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.3);
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
 }
 
 .actions {
@@ -1931,21 +1933,22 @@ footer {
 }
 
 .submit-btn {
-    background: transparent;
-    color: #58a6ff;
-    border: 1.5px solid #58a6ff;
+    background: rgba(88, 166, 255, 0.08); /* More visible by default */
+    color: var(--accent-2); /* The bright blue */
+    border: 1px solid rgba(88, 166, 255, 0.4);
     padding: 12px 24px;
     border-radius: 12px;
     cursor: pointer;
     font-size: 14px;
     font-weight: 700;
-    transition: all 0.2s ease;
+    transition: all 0.3s ease;
 }
 
 .submit-btn:hover:not(:disabled) {
-    background: rgba(88, 166, 255, 0.12);
+    background: rgba(88, 166, 255, 0.18);
+    border-color: rgba(88, 166, 255, 0.6);
     transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(88, 166, 255, 0.22);
+    box-shadow: 0 8px 20px rgba(88, 166, 255, 0.25);
 }
 
 .submit-btn:disabled {
@@ -1961,8 +1964,8 @@ footer {
 }
 
 .primary-btn {
-    background: var(--button-gradient);
-    color: var(--button-text);
+    background: linear-gradient(135deg, var(--accent) 0%, #e2c244 100%);
+    color: #1a1a1a;
     border: none;
     padding: 16px 48px;
     border-radius: 12px;
@@ -1970,11 +1973,13 @@ footer {
     font-weight: 700;
     cursor: pointer;
     transition: all 0.3s ease;
+    box-shadow: 0 4px 14px rgba(244, 211, 94, 0.2);
 }
 
 .primary-btn:hover:not(:disabled) {
     transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(244, 211, 94, 0.35);
+    box-shadow: 0 8px 24px rgba(244, 211, 94, 0.45);
+    background: linear-gradient(135deg, #fff29c 0%, var(--accent) 100%);
 }
 
 .primary-btn:disabled {
