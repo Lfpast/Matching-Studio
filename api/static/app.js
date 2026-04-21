@@ -641,6 +641,7 @@ class StartupSearchManager {
 
         const peopleText = people.length > 0 ? people.join("\n") : "";
         const refCode = String(item.ref_code || "").trim();
+        const refCodeLink = String(item.ref_code_link || "").trim();
         const descriptionText = String(item.description || "").trim();
 
         const categoryHtml = categories.length > 0
@@ -651,8 +652,16 @@ class StartupSearchManager {
             ? `<div class="startup-meta-row"><strong>People:</strong> <span class="startup-people-text">${escapeHtml(peopleText)}</span></div>`
             : "";
 
-        const refCodeRow = refCode
-            ? `<div class="startup-meta-row"><strong>Ref. Code:</strong> ${escapeHtml(refCode)}</div>`
+        const refCodeValueHtml = refCode
+            ? (
+                refCodeLink
+                    ? `<a class="startup-category-chip startup-refcode-link" href="${escapeHtml(refCodeLink)}" target="_blank" rel="noopener noreferrer">${escapeHtml(refCode)}</a>`
+                    : `<span class="startup-category-chip">${escapeHtml(refCode)}</span>`
+            )
+            : "";
+
+        const refCodeRow = refCodeValueHtml
+            ? `<div class="startup-meta-row"><strong>Ref. Code:</strong> ${refCodeValueHtml}</div>`
             : "";
 
         const sourceYearRow = sourceYearText
@@ -677,6 +686,11 @@ class StartupSearchManager {
         const titleLink = card.querySelector(".startup-name-link");
         if (titleLink) {
             titleLink.addEventListener("click", (evt) => evt.stopPropagation());
+        }
+
+        const refCodeAnchor = card.querySelector(".startup-refcode-link");
+        if (refCodeAnchor) {
+            refCodeAnchor.addEventListener("click", (evt) => evt.stopPropagation());
         }
 
         card.addEventListener("click", () => {
@@ -730,6 +744,8 @@ class StartupSearchManager {
         const categories = Array.isArray(item.categories) ? item.categories : [];
         const tels = Array.isArray(item.tels) ? item.tels : [];
         const emails = Array.isArray(item.emails) ? item.emails : [];
+        const refCode = String(item.ref_code || "").trim();
+        const refCodeLink = String(item.ref_code_link || "").trim();
 
         const sectionRows = [];
         if (item.description) {
@@ -754,7 +770,12 @@ class StartupSearchManager {
 
         const infoGridRows = [];
         if (item.source_year) infoGridRows.push(`<div class="startup-info-item"><span class="label">Source Year</span><span class="value">${escapeHtml(String(item.source_year))}</span></div>`);
-        if (item.ref_code) infoGridRows.push(`<div class="startup-info-item"><span class="label">Ref. Code</span><span class="value">${escapeHtml(String(item.ref_code))}</span></div>`);
+        if (refCode) {
+            const refCodeValue = refCodeLink
+                ? `<a class="startup-info-link" href="${escapeHtml(refCodeLink)}" target="_blank" rel="noopener noreferrer">${escapeHtml(refCode)}</a>`
+                : escapeHtml(refCode);
+            infoGridRows.push(`<div class="startup-info-item"><span class="label">Ref. Code</span><span class="value">${refCodeValue}</span></div>`);
+        }
         if (item.funding) infoGridRows.push(`<div class="startup-info-item"><span class="label">Funding</span><span class="value">${escapeHtml(String(item.funding))}</span></div>`);
         if (item.background_year) infoGridRows.push(`<div class="startup-info-item"><span class="label">Background (Year)</span><span class="value">${escapeHtml(String(item.background_year))}</span></div>`);
         if (people.length > 0) infoGridRows.push(`<div class="startup-info-item"><span class="label">People</span><span class="value startup-people-text">${escapeHtml(people.join("\n"))}</span></div>`);

@@ -450,6 +450,7 @@ class StartupMatchingEngine:
             "website": record.website,
             "people": record.people,
             "ref_code": record.ref_code,
+            "ref_code_link": record.ref_code_link,
             "categories": record.categories,
             "source_year": record.source_year,
             "description": record.description,

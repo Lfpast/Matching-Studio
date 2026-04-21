@@ -45,6 +45,7 @@ startup:
     people: "People"
     company_name: "English Name of company"
     ref_code: "Ref. Code"
+    ref_code_link: "Ref. Code Link"
     funding: "Funding"
     background_year: "Background (Year)"
     category: "Category"

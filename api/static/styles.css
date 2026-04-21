@@ -872,6 +872,19 @@ mark {
     color: var(--accent-2);
 }
 
+.startup-refcode-link {
+    text-decoration: none;
+}
+
+.startup-info-link {
+    color: var(--accent-2);
+    text-decoration: underline;
+}
+
+.startup-info-link:hover {
+    color: var(--accent);
+}
+
 .startup-keyword-chips {
     margin-top: 10px;
 }

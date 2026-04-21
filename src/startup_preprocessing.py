@@ -24,6 +24,7 @@ class StartupRecord:
     company_name: str
     people: List[str]
     ref_code: str
+    ref_code_link: str
     funding: str
     background_year: str
     categories: List[str]
@@ -150,6 +151,7 @@ def load_single_startup_xlsx(path: str, columns: Dict[str, str]) -> List[Startup
             company_name=company_name,
             people=split_numbered_items(people_text),
             ref_code=get_value(row, "ref_code"),
+            ref_code_link=get_value(row, "ref_code_link"),
             funding=get_value(row, "funding"),
             background_year=get_value(row, "background_year"),
             categories=split_categories(category_text),

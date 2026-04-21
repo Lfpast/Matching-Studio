@@ -52,6 +52,7 @@ class StartupItem(BaseModel):
     website: Optional[str] = None
     people: List[str] = Field(default_factory=list)
     ref_code: Optional[str] = None
+    ref_code_link: Optional[str] = None
     categories: List[str] = Field(default_factory=list)
     source_year: Optional[int] = None
     description: str = ""
