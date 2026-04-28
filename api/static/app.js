@@ -313,7 +313,7 @@ function openDeepTechModal(professorName, projects, cardElement, fixedSource = n
     overlay.addEventListener("click", closeDeepTechModal);
 
     requestAnimationFrame(() => {
-        const targetWidth = Math.min(700, window.innerWidth - 40);
+        const targetWidth = Math.min(940, window.innerWidth - 40);
         const targetHeight = Math.min(window.innerHeight * 0.92, Math.max(420, window.innerHeight * 0.75));
         const targetLeft = (window.innerWidth - targetWidth) / 2;
         const targetTop = (window.innerHeight - targetHeight) / 2;
@@ -861,7 +861,7 @@ class StartupSearchManager {
         });
 
         requestAnimationFrame(() => {
-            const targetWidth = Math.min(760, window.innerWidth - 40);
+            const targetWidth = Math.min(1020, window.innerWidth - 40);
             const targetHeight = Math.min(window.innerHeight * 0.92, Math.max(440, window.innerHeight * 0.75));
             const targetLeft = (window.innerWidth - targetWidth) / 2;
             const targetTop = (window.innerHeight - targetHeight) / 2;

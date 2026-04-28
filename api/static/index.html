@@ -111,22 +111,34 @@
 
                         <div class="grid">
                             <div class="field">
-                                <label for="professorTopK">Top K (0~20)</label>
+                                <label for="professorTopK">
+                                    Top K (1~20)
+                                    <span class="info-tooltip" data-tooltip="The number of professors our system will return, ranging from 1 to 20 (both inclusive).">ⓘ</span>
+                                </label>
                                 <input type="number" id="professorTopK" name="professorTopK" min="1" max="20"
                                     value="5" />
                             </div>
                             <div class="field">
-                                <label for="professorAlpha">Semantic Relevance (0~1)</label>
+                                <label for="professorAlpha">
+                                    Semantic Relevance (0~1)
+                                    <span class="info-tooltip" data-tooltip="Determines how strongly the model matches professors based on the semantic similarity of their profiles to the user's query. A larger value places more emphasis on word meaning and context, ranging from 0 to 1 (both inclusive).">ⓘ</span>
+                                </label>
                                 <input type="number" id="professorAlpha" name="professorAlpha" step="0.05" min="0"
                                     max="1" value="0.8" />
                             </div>
                             <div class="field">
-                                <label for="professorBeta">Youngsters Priority (0~1)</label>
+                                <label for="professorBeta">
+                                    Position Priority (0~1)
+                                    <span class="info-tooltip" data-tooltip="Determines how strongly the model matches professors based on their positions. A lower title will have a bigger priority. A larger value places more emphasis on the position priority, ranging from 0 to 1 (both inclusive).">ⓘ</span>
+                                </label>
                                 <input type="number" id="professorBeta" name="professorBeta" step="0.05" min="0" max="1"
                                     value="0.2" />
                             </div>
                             <div class="field">
-                                <label for="professorNeighborWeight">Diversity (0~1)</label>
+                                <label for="professorNeighborWeight">
+                                    Diversity (0~1)
+                                    <span class="info-tooltip" data-tooltip="Determines how broad or narrow the results are. A higher value returns a wider range of professors across related fields, while a lower value focuses on the most closely matched ones. Ranging from 0 to 1 (both inclusive).">ⓘ</span>
+                                </label>
                                 <input type="number" id="professorNeighborWeight" name="professorNeighborWeight"
                                     step="0.05" min="0" max="1" value="0.1" />
                             </div>
@@ -189,11 +201,17 @@
 
                         <div class="grid startup-grid">
                             <div class="field">
-                                <label for="startupTopK">Top K (0~20)</label>
+                                <label for="startupTopK">
+                                    Top K (1~20)
+                                    <span class="info-tooltip" data-tooltip="The number of startup projects our system will return, ranging from 1 to 20 (both inclusive).">ⓘ</span>
+                                </label>
                                 <input type="number" id="startupTopK" name="startupTopK" min="1" max="20" value="5" />
                             </div>
                             <div class="field">
-                                <label for="startupNeighborWeight">Diversity (0~1)</label>
+                                <label for="startupNeighborWeight">
+                                    Diversity (0~1)
+                                    <span class="info-tooltip" data-tooltip="Determines how broad or narrow the results are. A higher value returns a wider range of startup projects across related fields, while a lower value focuses on the most closely matched ones. Ranging from 0 to 1 (both inclusive).">ⓘ</span>
+                                </label>
                                 <input type="number" id="startupNeighborWeight" name="startupNeighborWeight" step="0.05"
                                     min="0" max="1" value="0.1" />
                             </div>
@@ -388,8 +406,8 @@
                 "a, button, [role='button'], input, textarea, select, .result-card, .deeptech-chip-trigger, .nav-link, .upload-window";
 
             const render = () => {
-                cursorX += (pointerX - cursorX) * 0.24;
-                cursorY += (pointerY - cursorY) * 0.24;
+                cursorX += (pointerX - cursorX) * 0.85;
+                cursorY += (pointerY - cursorY) * 0.85;
                 cursor.style.transform =
                     "translate(" + cursorX + "px, " + cursorY + "px) translate(-50%, -50%)";
                 rafId = window.requestAnimationFrame(render);

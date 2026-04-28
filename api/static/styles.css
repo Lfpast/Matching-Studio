@@ -151,14 +151,15 @@ body::after {
     width: 24px;
     height: 24px;
     border-radius: 50%;
-    border: 1px solid rgba(255, 255, 255, 0.4);
+    border: 2px solid rgba(255, 255, 255, 0.9);
+    background: rgba(255, 255, 255, 0.3);
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
     pointer-events: none;
     z-index: 10002;
     transform: translate(-50%, -50%);
     opacity: 0;
     visibility: hidden;
-    transition: width 0.3s ease, height 0.3s ease, background 0.3s ease, border-color 0.3s ease, opacity 0.2s ease;
-    mix-blend-mode: difference;
+    transition: width 0.3s ease, height 0.3s ease, background 0.3s ease, border-color 0.3s ease, opacity 0.2s ease, transform 0.1s;
 }
 
 .custom-cursor.visible {
@@ -167,16 +168,17 @@ body::after {
 }
 
 .custom-cursor.hover {
-    width: 60px;
-    height: 60px;
-    background: rgba(255, 255, 255, 1);
-    border-color: transparent;
-    mix-blend-mode: difference;
+    width: 48px;
+    height: 48px;
+    background: rgba(255, 255, 255, 0.6);
+    border-color: rgba(255, 255, 255, 1);
+    box-shadow: 0 0 12px rgba(255, 255, 255, 0.5);
 }
 
 .custom-cursor.pressed {
     width: 18px;
     height: 18px;
+    background: rgba(255, 255, 255, 0.8);
 }
 
 .page {
@@ -357,13 +359,73 @@ html.custom-cursor-enabled .prof-name-link {
 
 /* Premium form fields */
 form label {
-    display: block;
+    display: flex;
+    align-items: center;
     font-size: 0.85rem;
     text-transform: uppercase;
     letter-spacing: 0.1em;
     color: rgba(255, 255, 255, 0.6);
     margin-bottom: 2px;
     font-family: "IBM Plex Mono", monospace;
+}
+
+.info-tooltip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    margin-left: 6px;
+    background: rgba(255, 255, 255, 0.15);
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 9px;
+    font-family: sans-serif;
+    cursor: help;
+    position: relative;
+    transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.info-tooltip:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.1);
+}
+
+.info-tooltip::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    left: calc(100% + 12px);
+    top: 50%;
+    transform: translateY(-50%) translateX(-8px);
+    width: 280px;
+    background: rgba(15, 20, 28, 0.96);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: 14px 16px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 14px;
+    font-family: "Space Grotesk", sans-serif;
+    font-weight: 400;
+    line-height: 1.5;
+    text-align: justify;
+    text-transform: none;
+    letter-spacing: 0.02em;
+    white-space: normal;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), visibility 0s 0.25s;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5);
+    z-index: 100;
+    pointer-events: none;
+}
+
+.info-tooltip:hover::after {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(-50%) translateX(0);
+    transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), visibility 0s 0s;
 }
 
 textarea,
@@ -872,6 +934,11 @@ mark {
     color: var(--accent-2);
 }
 
+.startup-modal-content .startup-category-chip {
+    font-size: 14.5px;
+    padding: 5px 14px;
+}
+
 .startup-refcode-link {
     text-decoration: none;
 }
@@ -1092,19 +1159,19 @@ mark {
 }
 
 .deeptech-modal-header {
-    padding: 18px 20px 10px;
+    padding: 24px 26px 14px;
     border-bottom: 1px solid var(--border);
 }
 
 .deeptech-modal-header h3 {
     margin: 0;
-    font-size: 20px;
+    font-size: 26.5px;
 }
 
 .deeptech-modal-content {
-    padding: 14px 18px 40px;
+    padding: 18px 24px 50px;
     overflow-y: auto;
-    height: calc(100% - 64px);
+    height: calc(100% - 80px);
     max-height: none;
     overscroll-behavior: contain;
 }
@@ -1120,19 +1187,19 @@ mark {
 }
 
 .startup-modal-header {
-    padding: 18px 20px 10px;
+    padding: 24px 26px 14px;
     border-bottom: 1px solid var(--border);
 }
 
 .startup-modal-header h3 {
     margin: 0;
-    font-size: 20px;
+    font-size: 26.5px;
 }
 
 .startup-modal-title-link {
     color: var(--text);
     text-decoration: none;
-    border-bottom: 1px dashed rgba(88, 166, 255, 0.45);
+    border-bottom: 2px dashed rgba(88, 166, 255, 0.45);
 }
 
 .startup-modal-title-link:hover {
@@ -1141,17 +1208,17 @@ mark {
 }
 
 .startup-modal-content {
-    padding: 16px 18px 24px;
+    padding: 20px 24px 32px;
     overflow-y: auto;
-    height: calc(100% - 64px);
+    height: calc(100% - 80px);
     max-height: none;
 }
 
 .startup-detail-section {
-    margin-bottom: 14px;
+    margin-bottom: 18px;
     border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 16px;
-    padding: 16px;
+    border-radius: 20px;
+    padding: 20px;
     background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.01));
     box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.08), 0 8px 24px rgba(0, 0, 0, 0.15);
     transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.35s ease;
@@ -1165,8 +1232,8 @@ mark {
 }
 
 .startup-detail-section h4 {
-    margin: 0 0 10px;
-    font-size: 13px;
+    margin: 0 0 12px;
+    font-size: 17.5px;
     color: var(--muted);
     text-transform: uppercase;
     letter-spacing: 0.08em;
@@ -1175,19 +1242,19 @@ mark {
 .startup-detail-text {
     margin: 0;
     color: var(--text);
-    font-size: 14px;
+    font-size: 18.5px;
     line-height: 1.6;
 }
 
 .startup-info-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 10px;
+    grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+    gap: 14px;
 }
 
 .startup-info-item, .startup-contact-item {
-    padding: 10px 12px;
-    border-radius: 12px;
+    padding: 14px 16px;
+    border-radius: 16px;
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.06);
     box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05);
@@ -1206,29 +1273,29 @@ mark {
 }
 
 .startup-info-item .label {
-    font-size: 11px;
+    font-size: 14.5px;
     color: var(--muted);
     text-transform: uppercase;
     letter-spacing: 0.06em;
 }
 
 .startup-info-item .value {
-    font-size: 13px;
+    font-size: 17.5px;
     color: var(--text);
     line-height: 1.5;
 }
 
 .startup-contact-list {
     display: grid;
-    gap: 8px;
+    gap: 12px;
 }
 
 .startup-contact-item {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 10px;
-    font-size: 13px;
+    gap: 14px;
+    font-size: 17.5px;
     color: var(--text);
 }
 
@@ -1239,12 +1306,12 @@ mark {
 .contact-copy-btn {
     width: auto;
     margin: 0;
-    padding: 6px 10px;
+    padding: 8px 14px;
     border-radius: 999px;
     border: 1px solid rgba(88, 166, 255, 0.35);
     background: rgba(88, 166, 255, 0.14);
     color: var(--accent-2);
-    font-size: 11px;
+    font-size: 14.5px;
     font-weight: 600;
     letter-spacing: 0.03em;
 }
@@ -1262,17 +1329,17 @@ mark {
 
 .modal-close-btn {
     position: absolute;
-    top: 14px;
-    right: 14px;
-    width: 32px;
-    height: 32px;
+    top: 18px;
+    right: 18px;
+    width: 40px;
+    height: 40px;
     border-radius: 999px;
     border: 1px solid rgba(255, 255, 255, 0.1);
     background: rgba(255, 255, 255, 0.05);
     backdrop-filter: blur(12px) saturate(180%);
     -webkit-backdrop-filter: blur(12px) saturate(180%);
     color: var(--text);
-    font-size: 14px;
+    font-size: 18px;
     line-height: 1;
     padding: 0;
     margin: 0;
@@ -1291,10 +1358,10 @@ mark {
 
 .deeptech-project-card {
     border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 16px;
-    padding: 16px;
+    border-radius: 20px;
+    padding: 20px;
     background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.01));
-    margin-bottom: 14px;
+    margin-bottom: 18px;
     box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.08), 0 8px 24px rgba(0, 0, 0, 0.15);
     transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.35s ease;
     position: relative;
@@ -1334,8 +1401,8 @@ mark {
 .cluster-chip {
     display: inline-flex;
     align-items: center;
-    font-size: 11px;
-    padding: 3px 10px;
+    font-size: 14.5px;
+    padding: 4px 14px;
     border-radius: 999px;
     font-weight: 600;
 }
@@ -1364,24 +1431,24 @@ mark {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 10px;
+    gap: 14px;
 }
 
 .deeptech-project-header h4 {
     margin: 0;
-    font-size: 16px;
+    font-size: 21.5px;
 }
 
 .deeptech-meta-row {
     display: flex;
-    gap: 8px;
+    gap: 10px;
     flex-wrap: wrap;
-    margin-top: 8px;
+    margin-top: 10px;
 }
 
 .deeptech-meta-tag {
-    font-size: 11px;
-    padding: 2px 8px;
+    font-size: 14.5px;
+    padding: 3px 12px;
     border-radius: 999px;
     color: var(--muted);
     background: rgba(255, 255, 255, 0.06);
@@ -1389,31 +1456,31 @@ mark {
 }
 
 .deeptech-overview {
-    margin-top: 10px;
+    margin-top: 14px;
     color: var(--muted);
-    font-size: 13px;
+    font-size: 17.5px;
     line-height: 1.55;
 }
 
 .deeptech-list-row div {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
-    margin-top: 8px;
+    gap: 8px;
+    margin-top: 10px;
 }
 
 .deeptech-edge-list {
-    margin: 8px 0 0;
+    margin: 10px 0 0;
     padding: 0;
     list-style: none;
     display: grid;
-    gap: 8px;
+    gap: 10px;
 }
 
 .deeptech-edge-item {
     position: relative;
-    padding-left: 16px;
-    font-size: 12px;
+    padding-left: 20px;
+    font-size: 16px;
     color: var(--text);
     line-height: 1.5;
 }
@@ -1422,21 +1489,22 @@ mark {
     content: "•";
     position: absolute;
     left: 0;
+    top: 1px;
     color: var(--accent-2);
 }
 
 .deeptech-list-row {
-    margin-top: 10px;
+    margin-top: 14px;
 }
 
 .deeptech-list-row strong {
-    font-size: 12px;
+    font-size: 16px;
     color: var(--muted);
 }
 
 .deeptech-app-tag {
-    font-size: 11px;
-    padding: 3px 9px;
+    font-size: 14.5px;
+    padding: 4px 12px;
     border-radius: 999px;
     background: rgba(244, 211, 94, 0.12);
     color: var(--accent);
@@ -1444,8 +1512,8 @@ mark {
 }
 
 .deeptech-industry-tag {
-    font-size: 11px;
-    padding: 3px 9px;
+    font-size: 14.5px;
+    padding: 4px 12px;
     border-radius: 999px;
     background: rgba(88, 166, 255, 0.12);
     color: var(--accent-2);
