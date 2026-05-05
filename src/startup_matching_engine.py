@@ -41,6 +41,7 @@ class StartupMatchingEngine:
         self.keyword_cfg = self.semantic_cfg.get("keyword_matching", {}) if isinstance(self.semantic_cfg, dict) else {}
         self.semantic_weights = self._load_semantic_weights()
         self.min_field_similarity = self._safe_float(self.semantic_cfg.get("min_field_similarity", 0.08), 0.08)
+        self.lower_bound = self._safe_float(self.semantic_cfg.get("lower_bound", 0.50), 0.50)
         self.keyword_similarity_threshold = self._safe_float(
             self.keyword_cfg.get("similarity_threshold", 0.24),
             0.24,
@@ -53,7 +54,6 @@ class StartupMatchingEngine:
         self._keyword_embedding_cache: Dict[str, np.ndarray] = {}
         self.id_to_index = {record.startup_id: idx for idx, record in enumerate(self.records)}
         (
-            self.company_embeddings,
             self.description_embeddings,
             self.category_embeddings,
         ) = self._build_field_embeddings()
@@ -74,9 +74,8 @@ class StartupMatchingEngine:
 
     def _load_semantic_weights(self) -> Dict[str, float]:
         defaults = {
-            "company_name": 0.28,
-            "description": 0.52,
-            "category": 0.20,
+            "description": 0.40,
+            "category": 0.60,
         }
 
         configured_weights = self.semantic_cfg.get("field_weights", {}) if isinstance(self.semantic_cfg, dict) else {}
@@ -99,22 +98,20 @@ class StartupMatchingEngine:
 
         return {key: (value / total) for key, value in raw_weights.items()}
 
-    def _build_field_embeddings(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def _build_field_embeddings(self) -> Tuple[np.ndarray, np.ndarray]:
         if not self.records:
             empty = np.empty((0, 0), dtype=float)
-            return empty, empty, empty
+            return empty, empty
 
-        company_texts = [str(record.company_name).strip() or "startup company name" for record in self.records]
         description_texts = [str(record.description).strip() or "startup brief description" for record in self.records]
         category_texts = [", ".join(record.categories).strip() or "startup category" for record in self.records]
 
         if self.embedder.backend == "tfidf" and self.embedder.vectorizer is not None:
             # Reuse an already-fitted shared vectorizer when possible, avoiding professor embedding drift.
             if not hasattr(self.embedder.vectorizer, "vocabulary_"):
-                self.embedder.fit([*company_texts, *description_texts, *category_texts])
+                self.embedder.fit([*description_texts, *category_texts])
 
         return (
-            self.embedder.encode(company_texts),
             self.embedder.encode(description_texts),
             self.embedder.encode(category_texts),
         )
@@ -132,29 +129,27 @@ class StartupMatchingEngine:
         if not self.records:
             return np.zeros(len(self.records), dtype=float)
 
-        company_scores = self._score_field_similarity(query_vec, self.company_embeddings)
         description_scores = self._score_field_similarity(query_vec, self.description_embeddings)
         category_scores = self._score_field_similarity(query_vec, self.category_embeddings)
 
-        w_company = self.semantic_weights["company_name"]
-        w_description = self.semantic_weights["description"]
-        w_category = self.semantic_weights["category"]
+        w_description = self.semantic_weights.get("description", 0.40)
+        w_category = self.semantic_weights.get("category", 0.60)
 
         weighted_scores = (
-            (w_company * company_scores)
-            + (w_description * description_scores)
+            (w_description * description_scores)
             + (w_category * category_scores)
         )
 
-        field_scores = np.vstack((company_scores, description_scores, category_scores))
-        weight_vector = np.array([w_company, w_description, w_category], dtype=float).reshape(-1, 1)
+        field_scores = np.vstack((description_scores, category_scores))
+        weight_vector = np.array([w_description, w_category], dtype=float).reshape(-1, 1)
         coverage = (
             ((field_scores >= self.min_field_similarity).astype(float) * weight_vector).sum(axis=0)
             / max(float(weight_vector.sum()), 1e-9)
         )
 
         # Favor records that match across multiple semantic fields (stricter relevance).
-        strict_scores = weighted_scores * (0.55 + (0.45 * coverage))
+        # Uses dynamically configured lower_bound.
+        strict_scores = weighted_scores * (self.lower_bound + ((1.0 - self.lower_bound) * coverage))
         return np.maximum(strict_scores, 0.0)
 
     def _score_graph_boost(self, base_scores: np.ndarray, graph_neighbor_weight: float) -> np.ndarray:
@@ -281,14 +276,12 @@ class StartupMatchingEngine:
         if token_vec.size == 0:
             return 0.0
 
-        company_vec = self.company_embeddings[record_idx] if self.company_embeddings.size else np.zeros((0,), dtype=float)
         desc_vec = self.description_embeddings[record_idx] if self.description_embeddings.size else np.zeros((0,), dtype=float)
         category_vec = self.category_embeddings[record_idx] if self.category_embeddings.size else np.zeros((0,), dtype=float)
 
         semantic_score = (
-            (self.semantic_weights["company_name"] * self._cosine_dense(token_vec, company_vec))
-            + (self.semantic_weights["description"] * self._cosine_dense(token_vec, desc_vec))
-            + (self.semantic_weights["category"] * self._cosine_dense(token_vec, category_vec))
+            (self.semantic_weights.get("description", 0.40) * self._cosine_dense(token_vec, desc_vec))
+            + (self.semantic_weights.get("category", 0.60) * self._cosine_dense(token_vec, category_vec))
         )
 
         record = self.records[record_idx]

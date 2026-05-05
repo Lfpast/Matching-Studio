@@ -191,6 +191,7 @@ def build_engine(config_path: str) -> tuple:
 
     startup_graph = build_startup_graph(
         startup_records,
+        embedder=embedder,
         similarity_threshold=float(startup_graph_cfg.get("similarity_threshold", 0.22)),
         category_weight=category_weight,
         description_weight=description_weight,
