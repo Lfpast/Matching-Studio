@@ -2246,3 +2246,167 @@ document.addEventListener("DOMContentLoaded", () => {
         };
     }
 });
+
+// ==========================================
+// Mode Toggle Feature (LLM API vs Sentence BERT)
+// ==========================================
+
+const modeToggleState = {
+  professor: 'fast',
+  startup: 'fast'
+};
+
+function initializeModeToggles() {
+  const toggles = document.querySelectorAll('.mode-toggle');
+  toggles.forEach(toggle => {
+    const page = toggle.dataset.page;
+    const currentMode = modeToggleState[page];
+    applyToggleState(toggle, currentMode);
+    
+    toggle.addEventListener('mousedown', handleToggleMouseDown);
+  });
+}
+
+function applyToggleState(toggle, mode) {
+  toggle.classList.remove('toggle-fast', 'toggle-expert');
+  toggle.classList.add(`toggle-${mode}`);
+  
+  const emoji = mode === 'fast' ? '⚡' : '🎓';
+  const emojiEl = toggle.querySelector('.toggle-emoji');
+  if (emojiEl) emojiEl.textContent = emoji;
+}
+
+let dragState = null;
+
+function handleToggleMouseDown(event) {
+  const toggle = event.currentTarget;
+  if (toggle.classList.contains('toggle-disabled')) return;
+  
+  dragState = {
+    toggle: toggle,
+    startX: event.clientX,
+    startMode: modeToggleState[toggle.dataset.page],
+    isDragging: true
+  };
+  
+  document.addEventListener('mousemove', handleToggleMouseMove);
+  document.addEventListener('mouseup', handleToggleMouseUp);
+}
+
+function handleToggleMouseMove(event) {
+  if (!dragState || !dragState.isDragging) return;
+  
+  const toggle = dragState.toggle;
+  const thumb = toggle.querySelector('.toggle-thumb');
+  const deltaX = event.clientX - dragState.startX;
+  
+  const rect = toggle.getBoundingClientRect();
+  const maxDrag = rect.width - 36;
+  const percentage = Math.max(0, Math.min(100, (deltaX + (dragState.startMode === 'fast' ? 0 : maxDrag)) / maxDrag * 100));
+  
+  const thumbPosition = Math.max(4, Math.min(84, percentage / 100 * maxDrag + 4));
+  thumb.style.left = thumbPosition + 'px';
+}
+
+function handleToggleMouseUp(event) {
+  if (!dragState || !dragState.isDragging) return;
+  
+  const toggle = dragState.toggle;
+  const deltaX = event.clientX - dragState.startX;
+  const threshold = 30; // trigger mode change
+  
+  const newMode = Math.abs(deltaX) > threshold 
+    ? (deltaX > 0 ? 'expert' : 'fast')
+    : dragState.startMode;
+  
+  const modeChanged = newMode !== dragState.startMode;
+  
+  if (modeChanged) {
+    toggle.classList.add('toggle-disabled');
+    saveModeSetting(toggle.dataset.page, newMode, toggle);
+  } else {
+    applyToggleState(toggle, dragState.startMode);
+    const thumb = toggle.querySelector('.toggle-thumb');
+    thumb.style.left = ''; // Handled by CSS
+  }
+  
+  dragState = null;
+  document.removeEventListener('mousemove', handleToggleMouseMove);
+  document.removeEventListener('mouseup', handleToggleMouseUp);
+}
+
+async function saveModeSetting(page, newMode, toggleElement) {
+  try {
+    const taskType = page === 'professor' ? 'Professor' : 'Startup';
+    const response = await fetch('/api/settings/mode', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: newMode, task: taskType })
+    });
+    
+    if (response.ok) {
+      modeToggleState[page] = newMode;
+      applyToggleState(toggleElement, newMode);
+    } else {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `HTTP ${response.status}`);
+    }
+  } catch (error) {
+    console.error('Mode switch failed:', error);
+    applyToggleState(toggleElement, dragState ? dragState.startMode : modeToggleState[page]);
+    showModeErrorModal(error.message || 'Failed to switch mode. Please try again.');
+  } finally {
+    toggleElement.classList.remove('toggle-disabled');
+    const thumb = toggleElement.querySelector('.toggle-thumb');
+    thumb.style.left = ''; // Return to css rule
+  }
+}
+
+function disableModeToggleForPage(page) {
+  const toggle = document.querySelector(`.mode-toggle[data-page="${page}"]`);
+  if (toggle) toggle.classList.add('toggle-disabled');
+}
+
+function enableModeToggleForPage(page) {
+  const toggle = document.querySelector(`.mode-toggle[data-page="${page}"]`);
+  if (toggle) toggle.classList.remove('toggle-disabled');
+}
+
+function showModeErrorModal(errorMessage) {
+  const modal = document.getElementById('mode-switch-error-modal');
+  if (!modal) return;
+  const messageEl = document.getElementById('mode-error-message');
+  messageEl.textContent = errorMessage;
+  modal.classList.remove('hidden');
+}
+
+function closeModeErrorModal() {
+  const modal = document.getElementById('mode-switch-error-modal');
+  if (modal) modal.classList.add('hidden');
+}
+
+// LLM Mode Toggle Logic
+function setupLLMToggle(toggleId, fastTextId, expertTextId) {
+    const toggle = document.getElementById(toggleId);
+    const fastText = document.getElementById(fastTextId);
+    const expertText = document.getElementById(expertTextId);
+    
+    if (toggle && fastText && expertText) {
+        toggle.addEventListener('change', function() {
+            if (this.checked) {
+                // Expert Mode
+                fastText.classList.remove('active');
+                expertText.classList.add('active');
+            } else {
+                // Fast Mode
+                fastText.classList.add('active');
+                expertText.classList.remove('active');
+            }
+        });
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    setupLLMToggle('professorModeToggle', 'professorFastText', 'professorExpertText');
+    setupLLMToggle('startupModeToggle', 'startupFastText', 'startupExpertText');
+});

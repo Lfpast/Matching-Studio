@@ -352,6 +352,119 @@ html.custom-cursor-enabled .prof-name-link {
     animation: glassBreathe 8s ease-in-out infinite alternate;
 }
 
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+/* Mode Toggle */
+:root {
+    --fast-color: #fce87b;
+    --expert-color: #cbb8ff;
+    --transition-speed: 0.4s;
+}
+
+.toggle-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    user-select: none;
+}
+
+.toggle-container .label {
+    font-size: 14px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    transition: color var(--transition-speed);
+    text-transform: uppercase;
+    color: var(--text-inactive, #666);
+}
+
+body.active-fast .toggle-container .label.fast {
+    color: var(--fast-color);
+}
+
+body.active-expert .toggle-container .label.expert {
+    color: var(--expert-color);
+}
+
+.switch {
+    position: relative;
+    width: 60px;
+    height: 32px;
+    background-color: #222;
+    border-radius: 16px;
+    cursor: pointer;
+    overflow: hidden;
+    transition: background-color var(--transition-speed);
+}
+
+.switch-bg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    transition: background-color var(--transition-speed);
+}
+
+body.active-fast .switch-bg {
+    background-color: var(--fast-color);
+}
+
+body.active-expert .switch-bg {
+    background-color: var(--expert-color);
+}
+
+.handle {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 26px;
+    height: 26px;
+    background-color: white;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: transform var(--transition-speed) cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 2;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+}
+
+body.active-expert .handle {
+    transform: translateX(28px);
+}
+
+.icon {
+    width: 16px;
+    height: 16px;
+    transition: opacity 0.2s, transform 0.3s;
+    position: absolute;
+    fill: #000000 !important;
+}
+
+.icon-lightning {
+    opacity: 1;
+}
+
+.icon-hat {
+    opacity: 0;
+    transform: scale(0.5);
+}
+
+body.active-expert .icon-lightning {
+    opacity: 0;
+    transform: scale(0.5);
+}
+
+body.active-expert .icon-hat {
+    opacity: 1;
+    transform: scale(1);
+}
+
 @keyframes glassBreathe {
     0% { box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1), 0 24px 48px rgba(0, 0, 0, 0.3); }
     100% { box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.2), 0 32px 64px rgba(0, 0, 0, 0.5); }
@@ -2443,4 +2556,134 @@ footer {
     .contact-copy-btn {
         margin-top: 4px;
     }
+}
+/* ==========================================================================
+   Mode Toggle Component
+   ========================================================================== */
+
+/* Mode Toggle Container */
+.mode-toggle-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+  padding: 0 16px;
+}
+
+.toggle-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  white-space: nowrap;
+}
+
+/* Toggle Switch */
+.mode-toggle {
+  position: relative;
+  width: 120px;
+  height: 40px;
+  background-color: #f0f0f0;
+  border-radius: 20px;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.3s ease;
+}
+
+.mode-toggle.toggle-fast {
+  background-color: #fce87b;
+}
+
+.mode-toggle.toggle-expert {
+  background-color: #8e25ebc2;
+}
+
+.mode-toggle.toggle-disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Toggle Track Background */
+.toggle-track {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* Emoji Display */
+.toggle-emoji {
+  position: absolute;
+  font-size: 20px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.mode-toggle.toggle-fast .toggle-emoji {
+  left: 16px;
+  opacity: 1;
+}
+
+.mode-toggle.toggle-expert .toggle-emoji {
+  right: 16px;
+  opacity: 1;
+}
+
+/* Toggle Thumb (Circle) */
+.toggle-thumb {
+  position: absolute;
+  width: 32px;
+  height: 32px;
+  background-color: white;
+  border-radius: 50%;
+  top: 4px;
+  left: 4px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: left 0.3s ease;
+}
+
+.mode-toggle.toggle-expert .toggle-thumb {
+  left: 84px;
+}
+
+.mode-toggle.toggle-disabled .toggle-thumb {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Error Modal */
+.error-modal {
+  max-width: 400px;
+}
+
+.error-modal h2 {
+  margin-bottom: 12px;
+  font-size: 18px;
+}
+
+.error-modal .error-message {
+  margin: 16px 0;
+  color: #d32f2f;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.error-modal .btn-primary {
+  width: 100%;
+  padding: 10px;
+  margin-top: 16px;
+  background-color: #2196f3;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.error-modal .btn-primary:hover {
+  background-color: #1976d2;
 }

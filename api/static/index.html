@@ -103,6 +103,21 @@
                 <div class="hero-card">
                     <div class="card-header">
                         <span class="status" id="professorApiStatus">API online</span>
+                        <div class="toggle-container" id="modeContainerProf">
+                            <span class="label fast">FAST</span>
+                            <div class="switch" id="toggleSwitchProf">
+                                <div class="switch-bg"></div>
+                                <div class="handle">
+                                    <svg class="icon icon-lightning" viewBox="0 0 24 24">
+                                        <path d="M7 2v11h3v9l7-12h-4l4-8z"></path>
+                                    </svg>
+                                    <svg class="icon icon-hat" viewBox="0 0 24 24">
+                                        <path d="M12 3L1 9L12 15L21 10.09V17H23V9M5 13.18V17.18L12 21L19 17.18V13.18L12 17L5 13.18Z"></path>
+                                    </svg>
+                                </div>
+                            </div>
+                            <span class="label expert">EXPERT</span>
+                        </div>
                     </div>
                     <form id="professorSearchForm">
                         <label for="professorQuery">Enterprise query</label>
@@ -193,6 +208,21 @@
                 <div class="hero-card">
                     <div class="card-header">
                         <span class="status" id="startupApiStatus">API online</span>
+                        <div class="toggle-container" id="modeContainerStartup">
+                            <span class="label fast">FAST</span>
+                            <div class="switch" id="toggleSwitchStartup">
+                                <div class="switch-bg"></div>
+                                <div class="handle">
+                                    <svg class="icon icon-lightning" viewBox="0 0 24 24">
+                                        <path d="M7 2v11h3v9l7-12h-4l4-8z"></path>
+                                    </svg>
+                                    <svg class="icon icon-hat" viewBox="0 0 24 24">
+                                        <path d="M12 3L1 9L12 15L21 10.09V17H23V9M5 13.18V17.18L12 21L19 17.18V13.18L12 17L5 13.18Z"></path>
+                                    </svg>
+                                </div>
+                            </div>
+                            <span class="label expert">EXPERT</span>
+                        </div>
                     </div>
                     <form id="startupForm">
                         <label for="startupQuery">Startup query</label>
@@ -382,6 +412,41 @@
 
     <div id="modal-root"></div>
     <script>
+        (function () {
+            // Mode toggle logic
+            const body = document.body;
+            body.classList.add('active-fast'); // default state
+            let currentMode = 'fast';
+
+            function switchToExpert() {
+                currentMode = 'expert';
+                body.classList.remove('active-fast');
+                body.classList.add('active-expert');
+                // sendSignalToBackend('expert');
+            }
+
+            function switchToFast() {
+                currentMode = 'fast';
+                body.classList.remove('active-expert');
+                body.classList.add('active-fast');
+                // sendSignalToBackend('fast');
+            }
+
+            const profToggle = document.getElementById('toggleSwitchProf');
+            const startupToggle = document.getElementById('toggleSwitchStartup');
+
+            function handleToggle() {
+                if (currentMode === 'fast') {
+                    switchToExpert();
+                } else {
+                    switchToFast();
+                }
+            }
+
+            if (profToggle) profToggle.addEventListener('click', handleToggle);
+            if (startupToggle) startupToggle.addEventListener('click', handleToggle);
+        })();
+
         (function () {
             const root = document.documentElement;
             const cursor = document.getElementById("custom-cursor");
