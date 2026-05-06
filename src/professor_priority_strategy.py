@@ -1,65 +1,74 @@
 from __future__ import annotations
 
-from typing import Iterable, Optional
+from typing import Iterable, Mapping, Optional
 
 from .professor_preprocessing import ProfessorRecord
 
 
-TITLE_WEIGHTS = {
-    "assistant": 1.0,
-    "associate": 0.5,
-    "professor": 0.3,
+TITLE_WEIGHT_DEFAULTS = {
+    "assistant_professor": 1.0,
+    "associate_professor": 0.85,
+    "professor": 0.70,
+    "chair": 0.55,
+    "associate_head": 0.40,
+    "head": 0.25,
+    "other": 0.60,
 }
+
+TITLE_PATTERNS = (
+    ("associate head", "associate_head"),
+    ("associate department head", "associate_head"),
+    ("head of department", "head"),
+    ("department head", "head"),
+    ("head", "head"),
+    ("chair", "chair"),
+    ("assistant professor", "assistant_professor"),
+    ("assistant prof", "assistant_professor"),
+    ("asst professor", "assistant_professor"),
+    ("associate professor", "associate_professor"),
+    ("assoc professor", "associate_professor"),
+    ("full professor", "professor"),
+    ("professor", "professor"),
+)
 
 
 def normalize_title(title: str) -> str:
-    title_lower = title.lower()
-    if "assistant" in title_lower:
-        return "assistant"
-    if "associate" in title_lower:
-        return "associate"
-    if "professor" in title_lower:
-        return "professor"
-    return "professor"
+    title_lower = " ".join(str(title or "").lower().split())
+    if not title_lower:
+        return "other"
+
+    for pattern, normalized in TITLE_PATTERNS:
+        if pattern in title_lower:
+            return normalized
+
+    return "other"
 
 
 def compute_priority_score(
     title: str,
-    is_engineering: bool,
-    years_since_phd: Optional[int] = None,
-    w_years: float = 1.0,
-    w_title: float = 1.0,
-    w_engineering: float = 1.0,
-    default_years_since_phd: int = 10,
-    engineering_bonus: float = 1.2,
+    title_weights: Optional[Mapping[str, float]] = None,
+    default_title_score: float = 0.60,
 ) -> float:
-    years_value = years_since_phd if years_since_phd is not None else default_years_since_phd
-    years_score = 1.0 / (1.0 + max(0, years_value))
+    weights = dict(TITLE_WEIGHT_DEFAULTS)
+    if isinstance(title_weights, Mapping):
+        for key, value in title_weights.items():
+            try:
+                weights[str(key)] = max(0.0, float(value))
+            except (TypeError, ValueError):
+                continue
 
     title_key = normalize_title(title)
-    title_score = TITLE_WEIGHTS.get(title_key, 0.3)
-
-    engineering_score = engineering_bonus if is_engineering else 1.0
-
-    return (w_years * years_score) + (w_title * title_score) + (w_engineering * engineering_score)
+    return float(weights.get(title_key, default_title_score))
 
 
 def assign_priority_scores(
     records: Iterable[ProfessorRecord],
-    w_years: float = 1.0,
-    w_title: float = 1.0,
-    w_engineering: float = 1.0,
-    default_years_since_phd: int = 10,
-    engineering_bonus: float = 1.2,
+    title_weights: Optional[Mapping[str, float]] = None,
+    default_title_score: float = 0.60,
 ) -> None:
     for record in records:
         record.priority_score = compute_priority_score(
             title=record.title,
-            is_engineering=record.is_engineering,
-            years_since_phd=record.years_since_phd,
-            w_years=w_years,
-            w_title=w_title,
-            w_engineering=w_engineering,
-            default_years_since_phd=default_years_since_phd,
-            engineering_bonus=engineering_bonus,
+            title_weights=title_weights,
+            default_title_score=default_title_score,
         )

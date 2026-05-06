@@ -87,9 +87,14 @@ professor:
     default_graph_neighbor_weight: 0.1
 
   priority:
-    w_years: 0.5
-    w_title: 0.5
-    w_engineering: 0.5
+    default_title_score: 0.60
+    title_weights:
+      assistant_professor: 1.00
+      associate_professor: 0.85
+      professor: 0.70
+      chair: 0.55
+      associate_head: 0.40
+      head: 0.25
 
 # Query processing configuration
 query:

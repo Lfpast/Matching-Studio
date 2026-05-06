@@ -129,11 +129,8 @@ def build_engine(config_path: str) -> tuple:
     professor_priority_cfg = professor_cfg.get("priority", {})
     assign_priority_scores(
         professor_records,
-        w_years=professor_priority_cfg.get("w_years", 1.0),
-        w_title=professor_priority_cfg.get("w_title", 1.0),
-        w_engineering=professor_priority_cfg.get("w_engineering", 1.0),
-        default_years_since_phd=professor_priority_cfg.get("default_years_since_phd", 10),
-        engineering_bonus=professor_priority_cfg.get("engineering_bonus", 1.2),
+        title_weights=professor_priority_cfg.get("title_weights", {}),
+        default_title_score=professor_priority_cfg.get("default_title_score", 0.60),
     )
 
     professor_embedding_cfg = config.get("embedding", {})
