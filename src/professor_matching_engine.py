@@ -21,17 +21,13 @@ class MatchingEngine:
         records: Iterable[ProfessorRecord],
         embedder: TextEmbedder,
         graph: Optional[nx.Graph] = None,
-        attribute_weights: Optional[Dict[str, float]] = None,
         query_config: Optional[Dict] = None,
-        matching_config: Optional[Dict] = None,
         semantic_config: Optional[Dict] = None,
     ) -> None:
         self.records = list(records)
         self.embedder = embedder
         self.graph = graph
-        self.attribute_weights = attribute_weights or {}
         self.query_config = query_config or {}
-        self.matching_config = matching_config or {}
         self.semantic_config = semantic_config or {}
         self.semantic_weights = self._load_semantic_weights()
         self.min_field_similarity = self._safe_float(self.semantic_config.get("min_field_similarity", 0.08), 0.08)
@@ -69,13 +65,6 @@ class MatchingEngine:
     def _safe_float(value: object, default: float) -> float:
         try:
             return float(value)
-        except (TypeError, ValueError):
-            return default
-
-    @staticmethod
-    def _safe_int(value: object, default: int) -> int:
-        try:
-            return int(value)
         except (TypeError, ValueError):
             return default
 

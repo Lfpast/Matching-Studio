@@ -15,15 +15,6 @@ data:
 
 embedding:
   model_name: sentence-transformers/all-mpnet-base-v2
-  batch_size: 32
-  attribute_weights:
-    deeptech_projects: 5.0
-    paper: 2.5
-    research_interests: 1.5
-    leading_project: 1.0
-    department: 0.2
-    title: 0.1
-    other: 0.1
 
 startup:
   columns:

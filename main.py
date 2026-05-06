@@ -37,7 +37,9 @@ def main() -> None:
     df = clean_dataframe(df)
     records = build_records(df)
 
-    priority_cfg = config.get("priority", {})
+    professor_cfg = config.get("professor", {})
+
+    priority_cfg = professor_cfg.get("priority", {})
     assign_priority_scores(
         records,
         w_years=priority_cfg.get("w_years", 1.0),
@@ -49,9 +51,8 @@ def main() -> None:
 
     embedding_cfg = config.get("embedding", {})
     embedder = TextEmbedder(model_name=embedding_cfg.get("model_name", "sentence-transformers/all-MiniLM-L6-v2"))
-    attribute_weights = embedding_cfg.get("attribute_weights", {})
 
-    graph_cfg = config.get("graph", {})
+    graph_cfg = professor_cfg.get("graph", {})
     graph = build_graph(
         records,
         embedder=embedder,
@@ -63,16 +64,14 @@ def main() -> None:
     )
     
     query_cfg = config.get("query", {})
-    matching_cfg = config.get("matching", {})
-    semantic_cfg = config.get("semantic_matching", {})
+    matching_cfg = professor_cfg.get("matching", {})
+    semantic_cfg = professor_cfg.get("semantic_matching", {})
 
     engine = MatchingEngine(
         records=records, 
         embedder=embedder, 
         graph=graph, 
-        attribute_weights=attribute_weights,
         query_config=query_cfg,
-        matching_config=matching_cfg,
         semantic_config=semantic_cfg,
     )
 

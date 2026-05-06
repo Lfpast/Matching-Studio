@@ -109,7 +109,9 @@ def build_engine(config_path: str) -> tuple:
             "source_id": source_id,
         })
 
-    professor_deeptech_cfg = config.get("deeptech", {})
+    professor_cfg = config.get("professor", {})
+
+    professor_deeptech_cfg = professor_cfg.get("deeptech", {})
     professor_deeptech_columns = professor_deeptech_cfg.get("columns", {})
     if merged_sources:
         professor_deeptech_map = load_all_deeptech_sources(
@@ -124,7 +126,7 @@ def build_engine(config_path: str) -> tuple:
         )
     professor_records = build_records(professor_df, deeptech_map=professor_deeptech_map)
 
-    professor_priority_cfg = config.get("priority", {})
+    professor_priority_cfg = professor_cfg.get("priority", {})
     assign_priority_scores(
         professor_records,
         w_years=professor_priority_cfg.get("w_years", 1.0),
@@ -136,9 +138,8 @@ def build_engine(config_path: str) -> tuple:
 
     professor_embedding_cfg = config.get("embedding", {})
     embedder = TextEmbedder(model_name=professor_embedding_cfg.get("model_name", "sentence-transformers/all-MiniLM-L6-v2"))
-    professor_attribute_weights = professor_embedding_cfg.get("attribute_weights", {})
 
-    professor_graph_cfg = config.get("graph", {})
+    professor_graph_cfg = professor_cfg.get("graph", {})
     professor_graph = build_graph(
         professor_records,
         embedder=embedder,
@@ -150,16 +151,14 @@ def build_engine(config_path: str) -> tuple:
     )
     
     professor_query_cfg = config.get("query", {})
-    professor_matching_cfg = config.get("matching", {})
-    professor_semantic_cfg = config.get("semantic_matching", {})
+    professor_matching_cfg = professor_cfg.get("matching", {})
+    professor_semantic_cfg = professor_cfg.get("semantic_matching", {})
 
     professor_engine = MatchingEngine(
         records=professor_records, 
         embedder=embedder, 
         graph=professor_graph, 
-        attribute_weights=professor_attribute_weights,
         query_config=professor_query_cfg,
-        matching_config=professor_matching_cfg,
         semantic_config=professor_semantic_cfg,
     )
 
@@ -232,7 +231,7 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 CONFIG_PATH = os.environ.get("PROF_MATCH_CONFIG", "config/config.yaml")
 professor_engine, startup_engine, config = build_engine(CONFIG_PATH)
 professor_query_cfg = config.get("query", {})
-professor_matching_cfg = config.get("matching", {})
+professor_matching_cfg = config.get("professor", {}).get("matching", {})
 
 
 @app.get("/")
@@ -326,7 +325,7 @@ def refresh_runtime_engine() -> None:
     startup_engine = new_startup_engine
     config = new_config
     professor_query_cfg = config.get("query", {})
-    professor_matching_cfg = config.get("matching", {})
+    professor_matching_cfg = config.get("professor", {}).get("matching", {})
     credentials = load_credentials_from_config(CONFIG_PATH)
 
 # 活跃任务追踪（task_id -> {user_id, status, progress, ...}）
