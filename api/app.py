@@ -141,8 +141,12 @@ def build_engine(config_path: str) -> tuple:
     professor_graph_cfg = config.get("graph", {})
     professor_graph = build_graph(
         professor_records,
+        embedder=embedder,
         similarity_threshold=professor_graph_cfg.get("similarity_threshold", 0.2),
-        department_edge_weight=professor_graph_cfg.get("department_edge_weight", 0.1),
+        interests_weight=professor_graph_cfg.get("interests_weight", 0.25),
+        project_weight=professor_graph_cfg.get("project_weight", 0.15),
+        paper_weight=professor_graph_cfg.get("paper_weight", 0.20),
+        deeptech_weight=professor_graph_cfg.get("deeptech_weight", 0.40),
     )
     
     professor_query_cfg = config.get("query", {})

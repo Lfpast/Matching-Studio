@@ -73,8 +73,11 @@ startup:
       category: 0.60
 
 graph:
-  similarity_threshold: 0.15
-  department_edge_weight: 0.05
+  similarity_threshold: 0.2
+  interests_weight: 0.25
+  project_weight: 0.15
+  paper_weight: 0.20
+  deeptech_weight: 0.40
 
 matching:
   alpha: 0.85
