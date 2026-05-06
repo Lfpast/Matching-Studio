@@ -46,8 +46,6 @@ class ProfessorRecord:
     research_interests: str
     title: str
     url: str
-    is_engineering: bool
-    years_since_phd: Optional[int] = None
     priority_score: float = 0.0
     attributes: Dict[str, str] = field(default_factory=dict)
     deeptech_projects: List[DeepTechProject] = field(default_factory=list)
@@ -259,15 +257,6 @@ def clean_dataframe(df: pd.DataFrame) -> pd.DataFrame:
             df[col] = ""
         df[col] = df[col].fillna("").astype(str).str.strip()
 
-    if "is_engineering" not in df.columns:
-        df["is_engineering"] = False
-    df["is_engineering"] = df["is_engineering"].fillna(False).astype(bool)
-
-    if "years_since_phd" in df.columns:
-        df["years_since_phd"] = pd.to_numeric(df["years_since_phd"], errors="coerce")
-    else:
-        df["years_since_phd"] = None
-
     if "name" in df.columns:
         df = df.drop_duplicates(subset=["name", "department", "title"], keep="first")
     return df
@@ -282,7 +271,7 @@ def build_records(
     extra_columns = [
         col
         for col in df.columns
-        if col not in {"name", "department", "research_interests", "title", "url", "is_engineering", "years_since_phd"}
+        if col not in {"name", "department", "research_interests", "title", "url"}
     ]
     for _, row in df.iterrows():
         name = row.get("name", "").strip()
@@ -296,57 +285,9 @@ def build_records(
                 research_interests=row.get("research_interests", ""),
                 title=row.get("title", ""),
                 url=row.get("url", ""),
-                is_engineering=bool(row.get("is_engineering", False)),
-                years_since_phd=row.get("years_since_phd", None),
                 attributes=attributes,
                 deeptech_projects=deeptech_map.get(_normalize_name(name), []),
             )
         )
     return records
 
-def build_professor_text(record: ProfessorRecord, weights: Optional[Dict[str, float]] = None) -> str:
-    weights = weights or {}
-    research_weight = float(weights.get("research_interests", 1.0))
-    department_weight = float(weights.get("department", 0.6))
-    title_weight = float(weights.get("title", 0.3))
-    project_weight = float(weights.get("leading_project", 0.8))
-    paper_weight = float(weights.get("paper", 0.8))
-    deeptech_weight = float(weights.get("deeptech_projects", 0.0))
-    other_weight = float(weights.get("other", 0.2))
-
-    def repeat_text(label: str, text: str, weight: float) -> List[str]:
-        if not text or weight <= 0:
-            return []
-        repeats = max(1, int(round(weight * 3)))
-        return [f"{label}: {text}"] * repeats
-
-    parts: List[str] = []
-    parts.extend(repeat_text("Department", record.department, department_weight))
-    parts.extend(repeat_text("Title", record.title, title_weight))
-    parts.extend(repeat_text("Research", record.research_interests, research_weight))
-
-    for key, value in record.attributes.items():
-        if value:
-            if key == "leading_project":
-                parts.extend(repeat_text("Projects", value, project_weight))
-            elif key == "paper":
-                parts.extend(repeat_text("Publications", value, paper_weight))
-            else:
-                parts.extend(repeat_text(key.replace("_", " ").title(), value, other_weight))
-
-    if record.deeptech_projects:
-        deeptech_texts: List[str] = []
-        for project in record.deeptech_projects:
-            project_text_parts = [
-                project.overview,
-                project.tech_edges,
-                " ".join(project.applications),
-                " ".join(project.industries),
-            ]
-            joined = " ".join(part for part in project_text_parts if part).strip()
-            if joined:
-                deeptech_texts.append(joined)
-        if deeptech_texts:
-            parts.extend(repeat_text("DeepTech", " ".join(deeptech_texts), deeptech_weight))
-
-    return ". ".join(parts)
