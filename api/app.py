@@ -150,6 +150,8 @@ def build_engine(config_path: str) -> tuple:
     )
     
     professor_query_cfg = config.get("query", {})
+    professor_matching_cfg = config.get("matching", {})
+    professor_semantic_cfg = config.get("semantic_matching", {})
 
     professor_engine = MatchingEngine(
         records=professor_records, 
@@ -157,6 +159,8 @@ def build_engine(config_path: str) -> tuple:
         graph=professor_graph, 
         attribute_weights=professor_attribute_weights,
         query_config=professor_query_cfg,
+        matching_config=professor_matching_cfg,
+        semantic_config=professor_semantic_cfg,
     )
 
     startup_cfg = config.get("startup", {})
@@ -228,6 +232,7 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 CONFIG_PATH = os.environ.get("PROF_MATCH_CONFIG", "config/config.yaml")
 professor_engine, startup_engine, config = build_engine(CONFIG_PATH)
 professor_query_cfg = config.get("query", {})
+professor_matching_cfg = config.get("matching", {})
 
 
 @app.get("/")
@@ -272,12 +277,22 @@ async def match(request: MatchRequest) -> MatchResponse:
         professor_results = []
         startup_results = result.get("startup_results", [])
     else:
+        provided_fields = set(getattr(request, "model_fields_set", set()))
+        professor_top_k = request.top_k if "top_k" in provided_fields else int(professor_matching_cfg.get("default_top_k", request.top_k))
+        professor_alpha = request.alpha if "alpha" in provided_fields else float(professor_matching_cfg.get("default_alpha", request.alpha))
+        professor_beta = request.beta if "beta" in provided_fields else float(professor_matching_cfg.get("default_beta", request.beta))
+        professor_graph_neighbor_weight = (
+            request.graph_neighbor_weight
+            if "graph_neighbor_weight" in provided_fields
+            else float(professor_matching_cfg.get("default_graph_neighbor_weight", request.graph_neighbor_weight))
+        )
+
         result = professor_engine.match(
             query=request.query,
-            top_k=request.top_k,
-            alpha=request.alpha,
-            beta=request.beta,
-            graph_neighbor_weight=request.graph_neighbor_weight,
+            top_k=professor_top_k,
+            alpha=professor_alpha,
+            beta=professor_beta,
+            graph_neighbor_weight=professor_graph_neighbor_weight,
             validate_query=professor_validate_query,
             use_keyword_extraction=professor_use_keyword_extraction,
         )
@@ -304,13 +319,14 @@ credentials = load_credentials_from_config(CONFIG_PATH)
 
 
 def refresh_runtime_engine() -> None:
-    global professor_engine, startup_engine, config, professor_query_cfg, credentials
+    global professor_engine, startup_engine, config, professor_query_cfg, professor_matching_cfg, credentials
 
     new_professor_engine, new_startup_engine, new_config = build_engine(CONFIG_PATH)
     professor_engine = new_professor_engine
     startup_engine = new_startup_engine
     config = new_config
     professor_query_cfg = config.get("query", {})
+    professor_matching_cfg = config.get("matching", {})
     credentials = load_credentials_from_config(CONFIG_PATH)
 
 # 活跃任务追踪（task_id -> {user_id, status, progress, ...}）

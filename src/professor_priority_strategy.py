@@ -7,7 +7,6 @@ from .professor_preprocessing import ProfessorRecord
 
 TITLE_WEIGHTS = {
     "assistant": 1.0,
-    "lecturer": 0.8,
     "associate": 0.5,
     "professor": 0.3,
 }
@@ -17,8 +16,6 @@ def normalize_title(title: str) -> str:
     title_lower = title.lower()
     if "assistant" in title_lower:
         return "assistant"
-    if "lecturer" in title_lower:
-        return "lecturer"
     if "associate" in title_lower:
         return "associate"
     if "professor" in title_lower:

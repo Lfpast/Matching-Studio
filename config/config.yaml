@@ -25,21 +25,6 @@ embedding:
     title: 0.1
     other: 0.1
 
-deeptech:
-  columns:
-    cluster: "OKT Tech Cluster"
-    pi: "Principal Investigator (PI)"
-    title: "Technology Title"
-    trl: "Technology Readiness Level (TRL)"
-    ip_status: "IP status"
-    overview: "Technology Overview"
-    tech_edges: "Key Technology Edges"
-    app_1: "Potential Applications - 1st technology application"
-    app_2: "Potential Applications - 2nd technology application (if any)"
-    app_3: "Potential Applications - 3rd technology application (if any)"
-    industry_1: "Applicable Industry - 1st industry"
-    industry_2: "Applicable Industry - 2nd industry (if any)"
-
 startup:
   columns:
     people: "People"
@@ -69,27 +54,51 @@ startup:
     min_field_similarity: 0.20
     lower_bound: 0.50
     field_weights:
-      description: 0.40
-      category: 0.60
+      description: 0.4
+      category: 0.6
 
-graph:
-  similarity_threshold: 0.2
-  interests_weight: 0.25
-  project_weight: 0.15
-  paper_weight: 0.20
-  deeptech_weight: 0.40
+professor:
+  deeptech:
+    columns:
+      cluster: "OKT Tech Cluster"
+      pi: "Principal Investigator (PI)"
+      title: "Technology Title"
+      trl: "Technology Readiness Level (TRL)"
+      ip_status: "IP status"
+      overview: "Technology Overview"
+      tech_edges: "Key Technology Edges"
+      app_1: "Potential Applications - 1st technology application"
+      app_2: "Potential Applications - 2nd technology application (if any)"
+      app_3: "Potential Applications - 3rd technology application (if any)"
+      industry_1: "Applicable Industry - 1st industry"
+      industry_2: "Applicable Industry - 2nd industry (if any)"
 
-matching:
-  alpha: 0.85
-  beta: 0.1
-  graph_neighbor_weight: 0.15
+  graph:
+    similarity_threshold: 0.2
+    interests_weight: 0.2
+    project_weight: 0.1
+    paper_weight: 0.3
+    deeptech_weight: 0.4
 
-priority:
-  w_years: 0.5
-  w_title: 0.5
-  w_engineering: 0.5
-  # default_years_since_phd: 10
-  # engineering_bonus: 1.2
+  semantic_matching:
+    min_field_similarity: 0.20
+    lower_bound: 0.50
+    field_weights:
+      interests: 0.20
+      project: 0.10
+      paper: 0.30
+      deeptech: 0.40
+
+  matching:
+    default_top_k: 5
+    default_alpha: 0.8
+    default_beta: 0.2
+    default_graph_neighbor_weight: 0.1
+
+  priority:
+    w_years: 0.5
+    w_title: 0.5
+    w_engineering: 0.5
 
 # Query processing configuration
 query:

@@ -23,7 +23,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Professor matching system")
     parser.add_argument("--config", default="config/config.yaml", help="Path to config file")
     parser.add_argument("--query", required=True, help="Enterprise query text")
-    parser.add_argument("--top-k", type=int, default=5, help="Number of results")
+    parser.add_argument("--top-k", type=int, default=None, help="Number of results")
     args = parser.parse_args()
 
     config = load_config(args.config)
@@ -63,6 +63,8 @@ def main() -> None:
     )
     
     query_cfg = config.get("query", {})
+    matching_cfg = config.get("matching", {})
+    semantic_cfg = config.get("semantic_matching", {})
 
     engine = MatchingEngine(
         records=records, 
@@ -70,15 +72,17 @@ def main() -> None:
         graph=graph, 
         attribute_weights=attribute_weights,
         query_config=query_cfg,
+        matching_config=matching_cfg,
+        semantic_config=semantic_cfg,
     )
 
-    match_cfg = config.get("matching", {})
+    top_k = args.top_k if args.top_k is not None else int(matching_cfg.get("default_top_k", 5))
     result = engine.match(
         query=args.query,
-        top_k=args.top_k,
-        alpha=match_cfg.get("alpha", 0.8),
-        beta=match_cfg.get("beta", 0.2),
-        graph_neighbor_weight=match_cfg.get("graph_neighbor_weight", 0.1),
+        top_k=top_k,
+        alpha=matching_cfg.get("default_alpha", 0.8),
+        beta=matching_cfg.get("default_beta", 0.2),
+        graph_neighbor_weight=matching_cfg.get("default_graph_neighbor_weight", 0.1),
         validate_query=query_cfg.get("enable_validation", True),
         use_keyword_extraction=query_cfg.get("enable_keyword_extraction", True),
     )
