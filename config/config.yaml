@@ -16,6 +16,14 @@ data:
 embedding:
   model_name: sentence-transformers/all-mpnet-base-v2
 
+ollama:
+  host: https://ollama.com
+  api_key_env: OLLAMA_API_KEY
+  chat_model: gemma4:cloud
+  embedding_model: embeddinggemma
+  timeout_seconds: 120
+  rerank_candidate_count: 12
+
 startup:
   columns:
     people: "People"

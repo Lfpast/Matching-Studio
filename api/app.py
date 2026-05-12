@@ -21,6 +21,8 @@ from src.professor_preprocessing import (
     load_deeptech_data,
 )
 from src.embedding_model import TextEmbedder
+from src.env_loader import load_project_env
+from src.expert_mode_service import ExpertModeError, ExpertModeService
 from src.professor_graph_builder import build_graph
 from src.professor_matching_engine import MatchingEngine
 from src.professor_priority_strategy import assign_priority_scores
@@ -29,6 +31,7 @@ from src.startup_matching_engine import StartupMatchingEngine
 from src.startup_preprocessing import DEFAULT_STARTUP_FILENAME_REGEX, load_all_startup_sources
 from api.schemas import (
     MatchRequest, MatchResponse, KeywordItem,
+    RuntimeModeSwitchRequest, RuntimeModeSwitchResponse,
     LoginRequest, LoginResponse, FileUploadResponse,
     UpdateStartRequest, UpdateStartResponse, UpdateResultResponse
 )
@@ -36,6 +39,9 @@ from api.auth import load_credentials_from_config, verify_password, create_token
 from api.websocket_manager import ConnectionManager
 from src.orchestrator import DatabaseUpdateOrchestrator
 from datetime import datetime
+
+
+load_project_env()
 
 
 def load_config(config_path: str) -> dict:
@@ -229,6 +235,39 @@ CONFIG_PATH = os.environ.get("PROF_MATCH_CONFIG", "config/config.yaml")
 professor_engine, startup_engine, config = build_engine(CONFIG_PATH)
 professor_query_cfg = config.get("query", {})
 professor_matching_cfg = config.get("professor", {}).get("matching", {})
+expert_mode_service = ExpertModeService(professor_engine.records, startup_engine.records, config)
+runtime_mode_sessions: dict[str, str] = {}
+
+
+def normalize_runtime_session_id(runtime_session_id: str | None) -> str:
+    return str(runtime_session_id or "").strip()[:128]
+
+
+def get_runtime_mode(runtime_session_id: str | None) -> str:
+    session_id = normalize_runtime_session_id(runtime_session_id)
+    if not session_id:
+        return "fast"
+    return runtime_mode_sessions.get(session_id, "fast")
+
+
+def set_runtime_mode(runtime_session_id: str | None, mode_name: str) -> None:
+    session_id = normalize_runtime_session_id(runtime_session_id)
+    if not session_id:
+        return
+    runtime_mode_sessions[session_id] = "expert" if mode_name == "expert" else "fast"
+
+
+def build_backend_label(runtime_mode: str) -> str:
+    if runtime_mode == "expert":
+        return expert_mode_service.backend_label()
+    fast_model = str(config.get("embedding", {}).get("model_name", "sentence-transformers/all-mpnet-base-v2")).strip()
+    return f"MPNet · {fast_model.split('/')[-1]}"
+
+
+def build_runtime_status_text(runtime_mode: str) -> str:
+    if runtime_mode == "expert":
+        return expert_mode_service.status_text()
+    return "FAST · MPNet ready"
 
 
 @app.get("/")
@@ -241,12 +280,91 @@ async def health() -> dict:
     return {"status": "ok"}
 
 
+@app.post("/api/runtime/retrieval-mode", response_model=RuntimeModeSwitchResponse)
+async def switch_runtime_mode(request: RuntimeModeSwitchRequest) -> RuntimeModeSwitchResponse:
+    session_id = normalize_runtime_session_id(request.runtime_session_id)
+    if not session_id:
+        raise HTTPException(status_code=400, detail="runtime_session_id is required")
+
+    if request.target_mode == "expert":
+        try:
+            await asyncio.to_thread(expert_mode_service.probe_and_warm)
+        except ExpertModeError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"{exc}. Please retry.",
+            ) from exc
+
+    set_runtime_mode(session_id, request.target_mode)
+    active_mode = get_runtime_mode(session_id)
+    return RuntimeModeSwitchResponse(
+        runtime_session_id=session_id,
+        active_mode=active_mode,
+        backend_label=build_backend_label(active_mode),
+        status_text=build_runtime_status_text(active_mode),
+        message="Expert mode activated." if active_mode == "expert" else "Fast mode activated.",
+    )
+
+
 @app.post("/match", response_model=MatchResponse)
 async def match(request: MatchRequest) -> MatchResponse:
+    runtime_mode = get_runtime_mode(request.runtime_session_id)
     professor_validate_query = request.validate_query and professor_query_cfg.get("enable_validation", True)
     professor_use_keyword_extraction = request.use_keyword_extraction and professor_query_cfg.get("enable_keyword_extraction", True)
 
-    if request.mode == "startup":
+    if runtime_mode == "expert":
+        try:
+            if request.mode == "startup":
+                startup_matching_cfg = config.get("startup", {}).get("matching", {})
+                provided_fields = set(getattr(request, "model_fields_set", set()))
+                startup_validate_query = bool(professor_query_cfg.get("enable_validation", True))
+                startup_use_keyword_extraction = bool(professor_query_cfg.get("enable_keyword_extraction", True))
+                top_k = request.top_k if "top_k" in provided_fields else int(startup_matching_cfg.get("default_top_k", request.top_k))
+                graph_neighbor_weight = (
+                    request.graph_neighbor_weight
+                    if "graph_neighbor_weight" in provided_fields
+                    else float(startup_matching_cfg.get("default_graph_neighbor_weight", request.graph_neighbor_weight))
+                )
+
+                result = await asyncio.to_thread(
+                    expert_mode_service.match_startup,
+                    query=request.query,
+                    top_k=top_k,
+                    graph_neighbor_weight=graph_neighbor_weight,
+                    validate_query=startup_validate_query,
+                    use_keyword_extraction=startup_use_keyword_extraction,
+                )
+                professor_results = []
+                startup_results = result.get("startup_results", [])
+            else:
+                provided_fields = set(getattr(request, "model_fields_set", set()))
+                professor_top_k = request.top_k if "top_k" in provided_fields else int(professor_matching_cfg.get("default_top_k", request.top_k))
+                professor_alpha = request.alpha if "alpha" in provided_fields else float(professor_matching_cfg.get("default_alpha", request.alpha))
+                professor_beta = request.beta if "beta" in provided_fields else float(professor_matching_cfg.get("default_beta", request.beta))
+                professor_graph_neighbor_weight = (
+                    request.graph_neighbor_weight
+                    if "graph_neighbor_weight" in provided_fields
+                    else float(professor_matching_cfg.get("default_graph_neighbor_weight", request.graph_neighbor_weight))
+                )
+
+                result = await asyncio.to_thread(
+                    expert_mode_service.match_professor,
+                    query=request.query,
+                    top_k=professor_top_k,
+                    alpha=professor_alpha,
+                    beta=professor_beta,
+                    graph_neighbor_weight=professor_graph_neighbor_weight,
+                    validate_query=professor_validate_query,
+                    use_keyword_extraction=professor_use_keyword_extraction,
+                )
+                professor_results = result.get("results", [])
+                startup_results = []
+        except ExpertModeError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=str(exc),
+            ) from exc
+    elif request.mode == "startup":
         startup_matching_cfg = config.get("startup", {}).get("matching", {})
         provided_fields = set(getattr(request, "model_fields_set", set()))
         startup_validate_query = bool(professor_query_cfg.get("enable_validation", True))
@@ -298,6 +416,9 @@ async def match(request: MatchRequest) -> MatchResponse:
     return MatchResponse(
         query=request.query,
         mode=request.mode,
+        runtime_mode=runtime_mode,
+        backend_label=build_backend_label(runtime_mode),
+        status_text=build_runtime_status_text(runtime_mode),
         status=result["status"],
         message=result["message"],
         suggestions=result["suggestions"],
@@ -315,7 +436,7 @@ credentials = load_credentials_from_config(CONFIG_PATH)
 
 
 def refresh_runtime_engine() -> None:
-    global professor_engine, startup_engine, config, professor_query_cfg, professor_matching_cfg, credentials
+    global professor_engine, startup_engine, config, professor_query_cfg, professor_matching_cfg, credentials, expert_mode_service
 
     new_professor_engine, new_startup_engine, new_config = build_engine(CONFIG_PATH)
     professor_engine = new_professor_engine
@@ -324,6 +445,7 @@ def refresh_runtime_engine() -> None:
     professor_query_cfg = config.get("query", {})
     professor_matching_cfg = config.get("professor", {}).get("matching", {})
     credentials = load_credentials_from_config(CONFIG_PATH)
+    expert_mode_service.refresh(professor_engine.records, startup_engine.records, config)
 
 # 活跃任务追踪（task_id -> {user_id, status, progress, ...}）
 active_tasks = {}

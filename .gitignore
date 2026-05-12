@@ -5,3 +5,5 @@ logs/
 __pycache__/
 data/
 /matching-studio
+.env
+config/.env

@@ -14,6 +14,7 @@ class MatchRequest(BaseModel):
     validate_query: bool = True
     use_keyword_extraction: bool = True
     mode: Literal["professor", "startup"] = "professor"
+    runtime_session_id: Optional[str] = None
 
 
 class ProfessorMatchItem(BaseModel):
@@ -25,6 +26,7 @@ class ProfessorMatchItem(BaseModel):
     score: float
     similarity: float
     priority_score: float
+    expert_reason: Optional[str] = None
     deeptech_projects: List["ProfessorDeepTechItem"] = Field(default_factory=list)
 
 
@@ -61,12 +63,16 @@ class StartupItem(BaseModel):
     funding: Optional[str] = None
     background_year: Optional[str] = None
     matched_keywords: List[str] = Field(default_factory=list)
+    expert_reason: Optional[str] = None
     score: float
 
 
 class MatchResponse(BaseModel):
     query: str
     mode: str
+    runtime_mode: Literal["fast", "expert"] = "fast"
+    backend_label: str = ""
+    status_text: str = ""
     status: str  # "valid", "invalid", "weak_relevance", "needs_clarification"
     message: str
     suggestions: List[str]
@@ -74,6 +80,19 @@ class MatchResponse(BaseModel):
     startup_results: List[StartupItem] = Field(default_factory=list)
     keywords: List[KeywordItem]
     enhanced_query: str
+
+
+class RuntimeModeSwitchRequest(BaseModel):
+    runtime_session_id: str = Field(min_length=12, max_length=128)
+    target_mode: Literal["fast", "expert"]
+
+
+class RuntimeModeSwitchResponse(BaseModel):
+    runtime_session_id: str
+    active_mode: Literal["fast", "expert"]
+    backend_label: str
+    status_text: str
+    message: str
 
 class LoginRequest(BaseModel):
     """登录请求"""

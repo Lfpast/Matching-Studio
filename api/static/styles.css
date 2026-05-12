@@ -401,6 +401,16 @@ body.active-expert .toggle-container .label.expert {
     transition: background-color var(--transition-speed);
 }
 
+.switch:focus-visible {
+    outline: 2px solid rgba(252, 232, 123, 0.9);
+    outline-offset: 4px;
+}
+
+.switch.switch-disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+}
+
 .switch-bg {
     position: absolute;
     top: 0;
@@ -748,6 +758,13 @@ main {
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 32px;
     min-height: 160px;
+}
+
+.expert-reason {
+    margin: 0 0 12px;
+    color: rgba(255, 255, 255, 0.82);
+    font-size: 0.95rem;
+    line-height: 1.5;
 }
 
 #professorResultsList.results-grid,
@@ -2198,12 +2215,14 @@ footer {
     transform: translateY(-3px) scale(1.02);
 }
 
-#startupApiStatus {
+#startupApiStatus,
+#professorApiStatus {
     color: var(--accent);
 }
 
-#professorApiStatus {
-    color: var(--accent)
+body.active-expert #startupApiStatus,
+body.active-expert #professorApiStatus {
+    color: #cbb8ff;
 }
 
 .upload-drop-hint {
@@ -2665,10 +2684,12 @@ footer {
 }
 
 .error-modal .error-message {
+    display: block;
   margin: 16px 0;
   color: #d32f2f;
   font-size: 14px;
   line-height: 1.5;
+    white-space: pre-line;
 }
 
 .error-modal .btn-primary {

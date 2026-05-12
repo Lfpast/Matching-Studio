@@ -102,10 +102,10 @@
                 </div>
                 <div class="hero-card">
                     <div class="card-header">
-                        <span class="status" id="professorApiStatus">API online</span>
+                        <span class="status" id="professorApiStatus" role="status" aria-live="polite">FAST · MPNet ready</span>
                         <div class="toggle-container" id="modeContainerProf">
                             <span class="label fast">FAST</span>
-                            <div class="switch" id="toggleSwitchProf">
+                            <div class="switch" id="toggleSwitchProf" role="switch" tabindex="0" aria-checked="false" aria-label="Toggle professor search between fast and expert mode">
                                 <div class="switch-bg"></div>
                                 <div class="handle">
                                     <svg class="icon icon-lightning" viewBox="0 0 24 24">
@@ -207,10 +207,10 @@
                 </div>
                 <div class="hero-card">
                     <div class="card-header">
-                        <span class="status" id="startupApiStatus">API online</span>
+                        <span class="status" id="startupApiStatus" role="status" aria-live="polite">FAST · MPNet ready</span>
                         <div class="toggle-container" id="modeContainerStartup">
                             <span class="label fast">FAST</span>
-                            <div class="switch" id="toggleSwitchStartup">
+                            <div class="switch" id="toggleSwitchStartup" role="switch" tabindex="0" aria-checked="false" aria-label="Toggle startup search between fast and expert mode">
                                 <div class="switch-bg"></div>
                                 <div class="handle">
                                     <svg class="icon icon-lightning" viewBox="0 0 24 24">
@@ -411,42 +411,15 @@
     </main>
 
     <div id="modal-root"></div>
+    <div id="mode-switch-error-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="mode-switch-error-title" aria-describedby="mode-error-message">
+        <div class="modal-content auth-modal error-modal">
+            <h2 id="mode-switch-error-title">Expert Mode Unavailable</h2>
+            <p class="auth-subtitle">The Ollama expert pipeline could not be activated for this session.</p>
+            <p id="mode-error-message" class="error-message show" aria-live="assertive"></p>
+            <button type="button" id="mode-error-close" class="auth-submit-btn">Close</button>
+        </div>
+    </div>
     <script>
-        (function () {
-            // Mode toggle logic
-            const body = document.body;
-            body.classList.add('active-fast'); // default state
-            let currentMode = 'fast';
-
-            function switchToExpert() {
-                currentMode = 'expert';
-                body.classList.remove('active-fast');
-                body.classList.add('active-expert');
-                // sendSignalToBackend('expert');
-            }
-
-            function switchToFast() {
-                currentMode = 'fast';
-                body.classList.remove('active-expert');
-                body.classList.add('active-fast');
-                // sendSignalToBackend('fast');
-            }
-
-            const profToggle = document.getElementById('toggleSwitchProf');
-            const startupToggle = document.getElementById('toggleSwitchStartup');
-
-            function handleToggle() {
-                if (currentMode === 'fast') {
-                    switchToExpert();
-                } else {
-                    switchToFast();
-                }
-            }
-
-            if (profToggle) profToggle.addEventListener('click', handleToggle);
-            if (startupToggle) startupToggle.addEventListener('click', handleToggle);
-        })();
-
         (function () {
             const root = document.documentElement;
             const cursor = document.getElementById("custom-cursor");

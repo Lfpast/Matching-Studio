@@ -7,9 +7,13 @@ import yaml
 
 from src.professor_preprocessing import build_records, clean_dataframe, load_and_merge_data
 from src.embedding_model import TextEmbedder
+from src.env_loader import load_project_env
 from src.professor_graph_builder import build_graph
 from src.professor_matching_engine import MatchingEngine
 from src.professor_priority_strategy import assign_priority_scores
+
+
+load_project_env()
 
 
 def load_config(config_path: str) -> dict:

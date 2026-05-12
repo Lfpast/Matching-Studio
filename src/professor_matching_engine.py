@@ -313,17 +313,12 @@ class MatchingEngine:
         neighbor_scores = self._graph_neighbor_scores(semantic_scores)
 
         final_scores = (alpha * semantic_scores) + (beta * priorities) + (graph_neighbor_weight * neighbor_scores)
-        deeptech_payloads: List[List[Dict[str, object]]] = []
-
-        for idx, record in enumerate(self.records):
-            payload = self._rank_deeptech_projects(record, query_vec)
-            deeptech_payloads.append(payload)
         ranked_indices = np.argsort(final_scores)[::-1][:top_k]
 
         results = []
         for idx in ranked_indices:
             record = self.records[idx]
-            deeptech_projects = deeptech_payloads[idx]
+            deeptech_projects = self._rank_deeptech_projects(record, query_vec)
             results.append(
                 {
                     "name": record.name,
@@ -364,17 +359,12 @@ class MatchingEngine:
         neighbor_scores = self._graph_neighbor_scores(semantic_scores)
 
         final_scores = (alpha * semantic_scores) + (beta * priorities) + (graph_neighbor_weight * neighbor_scores)
-        deeptech_payloads: List[List[Dict[str, object]]] = []
-
-        for idx, record in enumerate(self.records):
-            payload = self._rank_deeptech_projects(record, query_vec)
-            deeptech_payloads.append(payload)
         ranked_indices = np.argsort(final_scores)[::-1][:top_k]
 
         results = []
         for idx in ranked_indices:
             record = self.records[idx]
-            deeptech_projects = deeptech_payloads[idx]
+            deeptech_projects = self._rank_deeptech_projects(record, query_vec)
             results.append(
                 {
                     "name": record.name,

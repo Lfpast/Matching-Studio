@@ -7,6 +7,9 @@ const professorEmptyState = document.getElementById("professorEmptyState");
 const professorPage = document.getElementById("professor-page");
 const startupPage = document.getElementById("startup-page");
 let currentDeepTechModal = null;
+let apiOnline = true;
+let runtimeStatusText = "FAST · MPNet ready";
+let runtimeModeController = null;
 const SOURCE_ORDER = { bmh: 0, eas: 1, mes: 2 };
 const HIGHLIGHT_STOPWORDS = new Set([
     "a", "an", "the", "and", "or", "but", "nor", "yet", "so",
@@ -66,6 +69,43 @@ function sanitizeKeywordList(keywords) {
     });
 
     return sanitized;
+}
+
+function paintStatusLabels() {
+    const nextText = apiOnline ? runtimeStatusText : "API offline";
+    if (professorStatusLabel) professorStatusLabel.textContent = nextText;
+    if (startupStatusLabel) startupStatusLabel.textContent = nextText;
+}
+
+function setRuntimeStatusText(nextText) {
+    runtimeStatusText = String(nextText || "FAST · MPNet ready");
+    paintStatusLabels();
+}
+
+function getRuntimeSessionId() {
+    return runtimeModeController ? runtimeModeController.runtimeSessionId : null;
+}
+
+async function readErrorDetail(response, fallbackMessage) {
+    try {
+        const payload = await response.json();
+        return payload.detail || payload.message || payload.error || fallbackMessage;
+    } catch (_error) {
+        return fallbackMessage;
+    }
+}
+
+function syncRuntimeModeFromResponse(data) {
+    if (!data) return;
+
+    if (runtimeModeController && data.runtime_mode) {
+        runtimeModeController.applyServerMode(data.runtime_mode, data.status_text || "");
+        return;
+    }
+
+    if (data.status_text) {
+        setRuntimeStatusText(data.status_text);
+    }
 }
 
 function highlightText(text, keywords) {
@@ -333,11 +373,11 @@ async function checkHealth() {
         if (!response.ok) {
             throw new Error("health failed");
         }
-        professorStatusLabel.textContent = "API online";
-        if (startupStatusLabel) startupStatusLabel.textContent = "API online";
+        apiOnline = true;
+        paintStatusLabels();
     } catch (error) {
-        professorStatusLabel.textContent = "API offline";
-        if (startupStatusLabel) startupStatusLabel.textContent = "API offline";
+        apiOnline = false;
+        paintStatusLabels();
     }
 }
 
@@ -377,6 +417,7 @@ function renderProfessorResults(results, query, extractedKeywords = []) {
         }
 
         const deeptechProjects = sortProjectsBySource(item.deeptech_projects || []);
+        const expertReason = String(item.expert_reason || "").trim();
         let deeptechHtml = "";
         if (deeptechProjects.length > 0) {
             const deeptechListClass = "keyword-chips deeptech-chip-list has-scroll";
@@ -407,6 +448,7 @@ function renderProfessorResults(results, query, extractedKeywords = []) {
       <h3>${professorNameHtml}</h3>
       <p>${escapeHtml(item.department)}</p>
       <p>${escapeHtml(item.title)}</p>
+    ${expertReason ? `<p class="expert-reason"><strong>Why it fits:</strong> ${escapeHtml(expertReason)}</p>` : ""}
       <p class="interest-summary"><strong>Interests:</strong> ${highlightedSummary}</p>
       ${showToggle ? `<div class="interest-full">${fullHighlighted}</div><button class="toggle-interests" type="button">Show all ▼</button>` : ""}
       ${chipsHtml}
@@ -493,6 +535,7 @@ professorForm.addEventListener("submit", async (event) => {
         beta: Number(document.getElementById("professorBeta").value),
         graph_neighbor_weight: Number(document.getElementById("professorNeighborWeight").value),
         mode: "professor",
+        runtime_session_id: getRuntimeSessionId(),
     };
 
     try {
@@ -505,17 +548,22 @@ professorForm.addEventListener("submit", async (event) => {
         });
 
         if (!response.ok) {
-            throw new Error("match failed");
+            const errorMessage = await readErrorDetail(response, "match failed");
+            if (response.status === 503 && runtimeModeController && runtimeModeController.mode === "expert") {
+                runtimeModeController.openErrorModal(`${errorMessage}\n请重试。`);
+            }
+            throw new Error(errorMessage);
         }
 
         const data = await response.json();
+        syncRuntimeModeFromResponse(data);
         unlockProfessorResults();
         const extractedKeywords = Array.isArray(data.keywords)
             ? data.keywords.map((item) => (typeof item === "string" ? item : item.keyword))
             : [];
         renderProfessorResults(data.results || [], query, extractedKeywords);
     } catch (error) {
-        professorResultsHint.textContent = "Failed to fetch results. Check the API.";
+        professorResultsHint.textContent = error instanceof Error ? error.message : "Failed to fetch results. Check the API.";
     }
 });
 
@@ -551,6 +599,7 @@ class StartupSearchManager {
             beta: 0.0,
             graph_neighbor_weight: Number(document.getElementById("startupNeighborWeight")?.value || 0.15),
             mode: "startup",
+            runtime_session_id: getRuntimeSessionId(),
         };
     }
 
@@ -575,10 +624,15 @@ class StartupSearchManager {
             });
 
             if (!response.ok) {
-                throw new Error("startup match failed");
+                const errorMessage = await readErrorDetail(response, "startup match failed");
+                if (response.status === 503 && runtimeModeController && runtimeModeController.mode === "expert") {
+                    runtimeModeController.openErrorModal(`${errorMessage}\n请重试。`);
+                }
+                throw new Error(errorMessage);
             }
 
             const data = await response.json();
+            syncRuntimeModeFromResponse(data);
             unlockStartupResults();
             const extractedKeywords = Array.isArray(data.keywords)
                 ? data.keywords.map((item) => (typeof item === "string" ? item : item.keyword))
@@ -589,7 +643,9 @@ class StartupSearchManager {
                 this.resultsHint.textContent = data.message || "Query is invalid.";
             }
         } catch (error) {
-            if (this.resultsHint) this.resultsHint.textContent = "Failed to fetch startup results. Check the API.";
+            if (this.resultsHint) {
+                this.resultsHint.textContent = error instanceof Error ? error.message : "Failed to fetch startup results. Check the API.";
+            }
         }
     }
 
@@ -638,6 +694,7 @@ class StartupSearchManager {
         const matchedKeywords = Array.isArray(item.matched_keywords) ? item.matched_keywords : [];
         const highlightKeywords = sanitizeKeywordList(matchedKeywords.length > 0 ? matchedKeywords : keywords);
         const sourceYearText = item.source_year ? String(item.source_year) : "";
+        const expertReason = String(item.expert_reason || "").trim();
 
         const peopleText = people.length > 0 ? people.join("\n") : "";
         const refCode = String(item.ref_code || "").trim();
@@ -675,6 +732,7 @@ class StartupSearchManager {
         card.innerHTML = `
       <span class="badge">#${index + 1} Ranked</span>
       <h3>${companyHtml}</h3>
+    ${expertReason ? `<p class="expert-reason"><strong>Why it fits:</strong> ${escapeHtml(expertReason)}</p>` : ""}
       ${peopleRow}
       ${refCodeRow}
       ${sourceYearRow}
@@ -1964,6 +2022,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const updateManager = new DatabaseUpdateManager(authManager);
     window.updateManager = updateManager;
 
+    runtimeModeController = new RuntimeModeController();
+    window.runtimeModeController = runtimeModeController;
+
     // Bug 11: 级联逻辑 alpha + beta = 1
     const professorAlphaInput = document.getElementById('professorAlpha');
     const professorBetaInput = document.getElementById('professorBeta');
@@ -2247,166 +2308,143 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 });
 
-// ==========================================
-// Mode Toggle Feature (LLM API vs Sentence BERT)
-// ==========================================
+class RuntimeModeController {
+        constructor() {
+                this.mode = "fast";
+                this.pending = false;
+                this.runtimeSessionId = this.getOrCreateSessionId();
+                this.toggles = [
+                        document.getElementById("toggleSwitchProf"),
+                        document.getElementById("toggleSwitchStartup"),
+                ].filter(Boolean);
+                this.errorModal = document.getElementById("mode-switch-error-modal");
+                this.errorMessage = document.getElementById("mode-error-message");
+                this.errorCloseButton = document.getElementById("mode-error-close");
+                this.lastFocusedElement = null;
+                this.handleEscapeKey = (event) => {
+                        if (event.key === "Escape" && this.errorModal && !this.errorModal.classList.contains("hidden")) {
+                                this.closeErrorModal();
+                        }
+                };
 
-const modeToggleState = {
-  professor: 'fast',
-  startup: 'fast'
-};
+                this.bindEvents();
+                this.applyServerMode("fast", "FAST · MPNet ready");
+        }
 
-function initializeModeToggles() {
-  const toggles = document.querySelectorAll('.mode-toggle');
-  toggles.forEach(toggle => {
-    const page = toggle.dataset.page;
-    const currentMode = modeToggleState[page];
-    applyToggleState(toggle, currentMode);
-    
-    toggle.addEventListener('mousedown', handleToggleMouseDown);
-  });
+        getOrCreateSessionId() {
+                const storageKey = "matching-studio-runtime-session-id";
+                const existing = localStorage.getItem(storageKey);
+                if (existing) return existing;
+
+                const generated = window.crypto && window.crypto.randomUUID
+                        ? window.crypto.randomUUID()
+                        : `runtime-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
+                localStorage.setItem(storageKey, generated);
+                return generated;
+        }
+
+        bindEvents() {
+                this.toggles.forEach((toggle) => {
+                        toggle.addEventListener("click", () => {
+                                void this.handleToggleIntent();
+                        });
+
+                        toggle.addEventListener("keydown", (event) => {
+                                if (event.key === "Enter" || event.key === " ") {
+                                        event.preventDefault();
+                                        void this.handleToggleIntent();
+                                }
+                        });
+                });
+
+                if (this.errorCloseButton) {
+                        this.errorCloseButton.addEventListener("click", () => this.closeErrorModal());
+                }
+
+                if (this.errorModal) {
+                        this.errorModal.addEventListener("click", (event) => {
+                                if (event.target === this.errorModal) {
+                                        this.closeErrorModal();
+                                }
+                        });
+                }
+
+                document.addEventListener("keydown", this.handleEscapeKey);
+        }
+
+        applyServerMode(nextMode, statusText = "") {
+                const normalizedMode = nextMode === "expert" ? "expert" : "fast";
+                this.mode = normalizedMode;
+
+                document.body.classList.toggle("active-fast", normalizedMode === "fast");
+                document.body.classList.toggle("active-expert", normalizedMode === "expert");
+
+                this.toggles.forEach((toggle) => {
+                        toggle.setAttribute("aria-checked", String(normalizedMode === "expert"));
+                });
+
+                setRuntimeStatusText(statusText || (normalizedMode === "expert" ? "EXPERT · Ollama ready" : "FAST · MPNet ready"));
+        }
+
+        setPendingState(isPending) {
+                this.pending = isPending;
+                this.toggles.forEach((toggle) => {
+                        toggle.classList.toggle("switch-disabled", isPending);
+                        toggle.setAttribute("aria-disabled", String(isPending));
+                        toggle.setAttribute("aria-busy", String(isPending));
+                        toggle.tabIndex = isPending ? -1 : 0;
+                });
+        }
+
+        async handleToggleIntent() {
+                if (this.pending) return;
+
+                const previousMode = this.mode;
+                const nextMode = this.mode === "fast" ? "expert" : "fast";
+                this.setPendingState(true);
+                setRuntimeStatusText(nextMode === "expert" ? "EXPERT · Testing Ollama..." : "FAST · Switching to MPNet...");
+
+                try {
+                        const response = await fetch("/api/runtime/retrieval-mode", {
+                                method: "POST",
+                                headers: {
+                                        "Content-Type": "application/json",
+                                },
+                                body: JSON.stringify({
+                                        runtime_session_id: this.runtimeSessionId,
+                                        target_mode: nextMode,
+                                }),
+                        });
+
+                        if (!response.ok) {
+                                throw new Error(await readErrorDetail(response, "Failed to switch retrieval mode"));
+                        }
+
+                        const data = await response.json();
+                        this.applyServerMode(data.active_mode, data.status_text || "");
+                } catch (error) {
+                        this.applyServerMode(previousMode, previousMode === "expert" ? "EXPERT · Ollama ready" : "FAST · MPNet ready");
+                        this.openErrorModal(`${error instanceof Error ? error.message : "Failed to switch retrieval mode"}\nPlease try again.`);
+                } finally {
+                        this.setPendingState(false);
+                }
+        }
+
+        openErrorModal(message) {
+                if (!this.errorModal || !this.errorMessage) return;
+                this.lastFocusedElement = document.activeElement;
+                this.errorMessage.textContent = String(message || "Unknown expert mode error");
+                this.errorModal.classList.remove("hidden");
+                if (this.errorCloseButton) {
+                        this.errorCloseButton.focus();
+                }
+        }
+
+        closeErrorModal() {
+                if (!this.errorModal) return;
+                this.errorModal.classList.add("hidden");
+                if (this.lastFocusedElement instanceof HTMLElement) {
+                        this.lastFocusedElement.focus();
+                }
+        }
 }
-
-function applyToggleState(toggle, mode) {
-  toggle.classList.remove('toggle-fast', 'toggle-expert');
-  toggle.classList.add(`toggle-${mode}`);
-  
-  const emoji = mode === 'fast' ? '⚡' : '🎓';
-  const emojiEl = toggle.querySelector('.toggle-emoji');
-  if (emojiEl) emojiEl.textContent = emoji;
-}
-
-let dragState = null;
-
-function handleToggleMouseDown(event) {
-  const toggle = event.currentTarget;
-  if (toggle.classList.contains('toggle-disabled')) return;
-  
-  dragState = {
-    toggle: toggle,
-    startX: event.clientX,
-    startMode: modeToggleState[toggle.dataset.page],
-    isDragging: true
-  };
-  
-  document.addEventListener('mousemove', handleToggleMouseMove);
-  document.addEventListener('mouseup', handleToggleMouseUp);
-}
-
-function handleToggleMouseMove(event) {
-  if (!dragState || !dragState.isDragging) return;
-  
-  const toggle = dragState.toggle;
-  const thumb = toggle.querySelector('.toggle-thumb');
-  const deltaX = event.clientX - dragState.startX;
-  
-  const rect = toggle.getBoundingClientRect();
-  const maxDrag = rect.width - 36;
-  const percentage = Math.max(0, Math.min(100, (deltaX + (dragState.startMode === 'fast' ? 0 : maxDrag)) / maxDrag * 100));
-  
-  const thumbPosition = Math.max(4, Math.min(84, percentage / 100 * maxDrag + 4));
-  thumb.style.left = thumbPosition + 'px';
-}
-
-function handleToggleMouseUp(event) {
-  if (!dragState || !dragState.isDragging) return;
-  
-  const toggle = dragState.toggle;
-  const deltaX = event.clientX - dragState.startX;
-  const threshold = 30; // trigger mode change
-  
-  const newMode = Math.abs(deltaX) > threshold 
-    ? (deltaX > 0 ? 'expert' : 'fast')
-    : dragState.startMode;
-  
-  const modeChanged = newMode !== dragState.startMode;
-  
-  if (modeChanged) {
-    toggle.classList.add('toggle-disabled');
-    saveModeSetting(toggle.dataset.page, newMode, toggle);
-  } else {
-    applyToggleState(toggle, dragState.startMode);
-    const thumb = toggle.querySelector('.toggle-thumb');
-    thumb.style.left = ''; // Handled by CSS
-  }
-  
-  dragState = null;
-  document.removeEventListener('mousemove', handleToggleMouseMove);
-  document.removeEventListener('mouseup', handleToggleMouseUp);
-}
-
-async function saveModeSetting(page, newMode, toggleElement) {
-  try {
-    const taskType = page === 'professor' ? 'Professor' : 'Startup';
-    const response = await fetch('/api/settings/mode', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode: newMode, task: taskType })
-    });
-    
-    if (response.ok) {
-      modeToggleState[page] = newMode;
-      applyToggleState(toggleElement, newMode);
-    } else {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `HTTP ${response.status}`);
-    }
-  } catch (error) {
-    console.error('Mode switch failed:', error);
-    applyToggleState(toggleElement, dragState ? dragState.startMode : modeToggleState[page]);
-    showModeErrorModal(error.message || 'Failed to switch mode. Please try again.');
-  } finally {
-    toggleElement.classList.remove('toggle-disabled');
-    const thumb = toggleElement.querySelector('.toggle-thumb');
-    thumb.style.left = ''; // Return to css rule
-  }
-}
-
-function disableModeToggleForPage(page) {
-  const toggle = document.querySelector(`.mode-toggle[data-page="${page}"]`);
-  if (toggle) toggle.classList.add('toggle-disabled');
-}
-
-function enableModeToggleForPage(page) {
-  const toggle = document.querySelector(`.mode-toggle[data-page="${page}"]`);
-  if (toggle) toggle.classList.remove('toggle-disabled');
-}
-
-function showModeErrorModal(errorMessage) {
-  const modal = document.getElementById('mode-switch-error-modal');
-  if (!modal) return;
-  const messageEl = document.getElementById('mode-error-message');
-  messageEl.textContent = errorMessage;
-  modal.classList.remove('hidden');
-}
-
-function closeModeErrorModal() {
-  const modal = document.getElementById('mode-switch-error-modal');
-  if (modal) modal.classList.add('hidden');
-}
-
-// LLM Mode Toggle Logic
-function setupLLMToggle(toggleId, fastTextId, expertTextId) {
-    const toggle = document.getElementById(toggleId);
-    const fastText = document.getElementById(fastTextId);
-    const expertText = document.getElementById(expertTextId);
-    
-    if (toggle && fastText && expertText) {
-        toggle.addEventListener('change', function() {
-            if (this.checked) {
-                // Expert Mode
-                fastText.classList.remove('active');
-                expertText.classList.add('active');
-            } else {
-                // Fast Mode
-                fastText.classList.add('active');
-                expertText.classList.remove('active');
-            }
-        });
-    }
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-    setupLLMToggle('professorModeToggle', 'professorFastText', 'professorExpertText');
-    setupLLMToggle('startupModeToggle', 'startupFastText', 'startupExpertText');
-});
