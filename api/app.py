@@ -140,7 +140,10 @@ def build_engine(config_path: str) -> tuple:
     )
 
     professor_embedding_cfg = config.get("embedding", {})
-    embedder = TextEmbedder(model_name=professor_embedding_cfg.get("model_name", "sentence-transformers/all-MiniLM-L6-v2"))
+    embedder = TextEmbedder(
+        model_name=professor_embedding_cfg.get("model_name", "sentence-transformers/all-MiniLM-L6-v2"),
+        batch_size=professor_embedding_cfg.get("batch_size", 4),
+    )
 
     professor_graph_cfg = professor_cfg.get("graph", {})
     professor_graph = build_graph(

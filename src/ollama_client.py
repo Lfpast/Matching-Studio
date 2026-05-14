@@ -423,7 +423,13 @@ class OllamaClient:
 
 
 class OllamaTextEmbedder:
-    def __init__(self, client: OllamaClient, model_name: str | None = None, fallback_embedder: Any | None = None) -> None:
+    def __init__(
+        self,
+        client: OllamaClient,
+        model_name: str | None = None,
+        fallback_embedder: Any | None = None,
+        batch_size: int = 4,
+    ) -> None:
         self.client = client
         self.model_name = model_name or client.settings.embedding_model
         self.backend = "ollama"
@@ -431,6 +437,28 @@ class OllamaTextEmbedder:
         self.fallback_embedder = fallback_embedder
         self._remote_embeddings_enabled = True
         self._fallback_reason = ""
+        self.batch_size = self._normalize_batch_size(batch_size)
+
+    @staticmethod
+    def _normalize_batch_size(batch_size: int) -> int:
+        try:
+            return max(1, int(batch_size))
+        except (TypeError, ValueError):
+            return 4
+
+    def _iter_batches(self, texts_list: List[str]) -> Iterable[List[str]]:
+        step = max(1, self.batch_size)
+        for start in range(0, len(texts_list), step):
+            yield texts_list[start:start + step]
+
+    @staticmethod
+    def _stack_embeddings(embeddings: List[np.ndarray]) -> np.ndarray:
+        non_empty = [np.atleast_2d(batch) for batch in embeddings if getattr(batch, "size", 0) > 0]
+        if not non_empty:
+            return np.empty((0, 0), dtype=float)
+        if len(non_empty) == 1:
+            return non_empty[0]
+        return np.vstack(non_empty)
 
     def fit(self, _texts: Iterable[str]) -> None:
         if self.fallback_embedder is not None and hasattr(self.fallback_embedder, "fit"):
@@ -448,11 +476,24 @@ class OllamaTextEmbedder:
 
     def encode(self, texts: Iterable[str]) -> np.ndarray:
         text_list = list(texts)
+        if not text_list:
+            return np.empty((0, 0), dtype=float)
         if not self._remote_embeddings_enabled:
             return self._fallback_encode(text_list)
 
         try:
-            return self.client.embed_texts(text_list, model_name=self.model_name)
+            batch_embeddings: List[np.ndarray] = []
+            for batch_texts in self._iter_batches(text_list):
+                try:
+                    batch_embeddings.append(self.client.embed_texts(batch_texts, model_name=self.model_name))
+                except OllamaAPIError as exc:
+                    message = str(exc)
+                    if self.client._looks_like_auth_error(message) or self.client._looks_like_model_name_error(message):
+                        self._remote_embeddings_enabled = False
+                        return self._fallback_encode(text_list, message)
+                    raise
+
+            return self._stack_embeddings(batch_embeddings)
         except OllamaAPIError as exc:
             message = str(exc)
             if self.client._looks_like_auth_error(message) or self.client._looks_like_model_name_error(message):

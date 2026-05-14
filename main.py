@@ -51,7 +51,10 @@ def main() -> None:
     )
 
     embedding_cfg = config.get("embedding", {})
-    embedder = TextEmbedder(model_name=embedding_cfg.get("model_name", "sentence-transformers/all-MiniLM-L6-v2"))
+    embedder = TextEmbedder(
+        model_name=embedding_cfg.get("model_name", "sentence-transformers/all-MiniLM-L6-v2"),
+        batch_size=embedding_cfg.get("batch_size", 4),
+    )
 
     graph_cfg = professor_cfg.get("graph", {})
     graph = build_graph(

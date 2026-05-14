@@ -15,6 +15,7 @@ data:
 
 embedding:
   model_name: sentence-transformers/all-mpnet-base-v2
+  batch_size: 2
 
 ollama:
   host: https://ollama.com

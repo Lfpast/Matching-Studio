@@ -69,6 +69,7 @@ class ExpertModeService:
             self.client,
             self.settings.embedding_model,
             fallback_embedder=self.fallback_embedder,
+            batch_size=self._embedding_batch_size(self.config),
         )
         self.professor_by_name = {record.name: record for record in self.professor_records}
         self.startup_by_id = {record.startup_id: record for record in self.startup_records}
@@ -79,9 +80,15 @@ class ExpertModeService:
     def _build_fallback_embedder(config: Dict[str, Any]) -> TextEmbedder:
         embedding_cfg = config.get("embedding", {}) if isinstance(config, dict) else {}
         model_name = str(embedding_cfg.get("model_name", "sentence-transformers/all-mpnet-base-v2")).strip()
+        batch_size = embedding_cfg.get("batch_size", 4)
         if not model_name:
             model_name = "sentence-transformers/all-mpnet-base-v2"
-        return TextEmbedder(model_name=model_name)
+        return TextEmbedder(model_name=model_name, batch_size=batch_size)
+
+    @staticmethod
+    def _embedding_batch_size(config: Dict[str, Any]) -> int:
+        embedding_cfg = config.get("embedding", {}) if isinstance(config, dict) else {}
+        return embedding_cfg.get("batch_size", 4)
 
     def refresh(
         self,
@@ -99,6 +106,7 @@ class ExpertModeService:
             self.client,
             self.settings.embedding_model,
             fallback_embedder=self.fallback_embedder,
+            batch_size=self._embedding_batch_size(self.config),
         )
         self.professor_by_name = {record.name: record for record in self.professor_records}
         self.startup_by_id = {record.startup_id: record for record in self.startup_records}
