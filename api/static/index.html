@@ -121,7 +121,7 @@
                     </div>
                     <form id="professorSearchForm">
                         <label for="professorQuery">Enterprise query</label>
-                        <textarea id="professorQuery" name="professorQuery"
+                        <textarea id="professorQuery" name="professorQuery" data-lenis-prevent
                             placeholder="e.g. medical imaging, computer vision, diagnostics" required></textarea>
 
                         <div class="grid">
@@ -226,7 +226,7 @@
                     </div>
                     <form id="startupForm">
                         <label for="startupQuery">Startup query</label>
-                        <textarea id="startupQuery" name="startupQuery"
+                        <textarea id="startupQuery" name="startupQuery" data-lenis-prevent
                             placeholder="e.g. medical imaging startups, AI robotics chips" required></textarea>
 
                         <div class="grid startup-grid">
@@ -414,7 +414,7 @@
     <div id="mode-switch-error-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="mode-switch-error-title" aria-describedby="mode-error-message">
         <div class="modal-content auth-modal error-modal">
             <h2 id="mode-switch-error-title">Expert Mode Unavailable</h2>
-            <p class="auth-subtitle">The Ollama expert pipeline could not be activated for this session.</p>
+            <p class="auth-subtitle">The LLM expert pipeline could not be activated for this session.</p>
             <p id="mode-error-message" class="error-message show" aria-live="assertive"></p>
             <button type="button" id="mode-error-close" class="auth-submit-btn">Close</button>
         </div>

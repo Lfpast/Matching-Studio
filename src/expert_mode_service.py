@@ -126,9 +126,7 @@ class ExpertModeService:
         return f"Ollama · {chat_model}"
 
     def status_text(self) -> str:
-        if self.uses_embedding_fallback():
-            return "EXPERT · Ollama hybrid ready"
-        return "EXPERT · Ollama ready"
+        return "EXPERT · LLM ready"
 
     def probe_and_warm(self) -> None:
         try:

@@ -240,6 +240,16 @@ function parseTechEdges(techEdgesText) {
         .filter(Boolean);
 }
 
+function sortResultsByScore(items) {
+    return [...(Array.isArray(items) ? items : [])].sort((left, right) => {
+        const leftScore = Number(left?.score);
+        const rightScore = Number(right?.score);
+        const safeLeftScore = Number.isFinite(leftScore) ? leftScore : 0;
+        const safeRightScore = Number.isFinite(rightScore) ? rightScore : 0;
+        return safeRightScore - safeLeftScore;
+    });
+}
+
 function normalizeSource(source) {
     const value = String(source || "EAS").trim().toLowerCase();
     if (value === "bmh") return "bmh";
@@ -393,8 +403,9 @@ function renderProfessorResults(results, query, extractedKeywords = []) {
     professorResultsHint.textContent = `Showing ${results.length} matches`;
     const backendKeywords = sanitizeKeywordList(extractedKeywords);
     const keywords = backendKeywords.length > 0 ? backendKeywords : getKeywords(query || "");
+    const sortedResults = sortResultsByScore(results);
 
-    results.forEach((item, index) => {
+    sortedResults.forEach((item, index) => {
         const card = document.createElement("article");
         card.className = "result-card";
 
@@ -672,8 +683,9 @@ class StartupSearchManager {
 
         const backendKeywords = sanitizeKeywordList(extractedKeywords);
         const keywords = backendKeywords.length > 0 ? backendKeywords : getKeywords(this.queryInput?.value || "");
+        const sortedItems = sortResultsByScore(items);
 
-        items.forEach((item, index) => {
+        sortedItems.forEach((item, index) => {
             const card = this.renderStartupCard(item, keywords, index);
             this.resultsList.appendChild(card);
         });
@@ -2383,7 +2395,7 @@ class RuntimeModeController {
                         toggle.setAttribute("aria-checked", String(normalizedMode === "expert"));
                 });
 
-                setRuntimeStatusText(statusText || (normalizedMode === "expert" ? "EXPERT · Ollama ready" : "FAST · MPNet ready"));
+                setRuntimeStatusText(statusText || (normalizedMode === "expert" ? "EXPERT · LLM ready" : "FAST · MPNet ready"));
         }
 
         setPendingState(isPending) {
@@ -2402,7 +2414,7 @@ class RuntimeModeController {
                 const previousMode = this.mode;
                 const nextMode = this.mode === "fast" ? "expert" : "fast";
                 this.setPendingState(true);
-                setRuntimeStatusText(nextMode === "expert" ? "EXPERT · Testing Ollama..." : "FAST · Switching to MPNet...");
+                setRuntimeStatusText(nextMode === "expert" ? "EXPERT · Testing LLM..." : "FAST · Testing MPNet...");
 
                 try {
                         const response = await fetch("/api/runtime/retrieval-mode", {
@@ -2423,7 +2435,7 @@ class RuntimeModeController {
                         const data = await response.json();
                         this.applyServerMode(data.active_mode, data.status_text || "");
                 } catch (error) {
-                        this.applyServerMode(previousMode, previousMode === "expert" ? "EXPERT · Ollama ready" : "FAST · MPNet ready");
+                        this.applyServerMode(previousMode, previousMode === "expert" ? "EXPERT · LLM ready" : "FAST · MPNet ready");
                         this.openErrorModal(`${error instanceof Error ? error.message : "Failed to switch retrieval mode"}\nPlease try again.`);
                 } finally {
                         this.setPendingState(false);
