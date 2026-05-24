@@ -1,5 +1,7 @@
 # Professor-Industry Matching System
 
+This readme is old, required updates.
+
 A GraphRAG-powered intelligent matching platform that connects enterprises with academic research expertise at HKUST. The system combines semantic search, knowledge graph integration, priority-based ranking, startup search, and a real-time database update pipeline.
 
 ## System Overview
