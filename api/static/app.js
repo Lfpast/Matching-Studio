@@ -2406,6 +2406,12 @@ class RuntimeModeController {
                         toggle.setAttribute("aria-busy", String(isPending));
                         toggle.tabIndex = isPending ? -1 : 0;
                 });
+
+                const profSubmitBtn = document.querySelector('#professorSearchForm button[type="submit"]');
+                if (profSubmitBtn) profSubmitBtn.disabled = isPending;
+
+                const startupSubmitBtn = document.querySelector('#startupForm button[type="submit"]');
+                if (startupSubmitBtn) startupSubmitBtn.disabled = isPending;
         }
 
         async handleToggleIntent() {
