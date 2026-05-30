@@ -5,9 +5,14 @@ import re
 
 import networkx as nx
 import numpy as np
-from sklearn.metrics.pairwise import cosine_similarity
 
 from .embedding_model import TextEmbedder
+from .hybrid_evidence_scorer import (
+    HybridEvidenceScorer,
+    QueryScoreResult,
+    build_startup_record_chunks,
+    normalize_weights,
+)
 from .query_processor import EnhancedQueryProcessor, QueryStatus, QueryValidationResult
 from .startup_preprocessing import StartupRecord
 
@@ -40,8 +45,6 @@ class StartupMatchingEngine:
         self.semantic_cfg = self.config.get("semantic_matching", {}) if isinstance(self.config, dict) else {}
         self.keyword_cfg = self.semantic_cfg.get("keyword_matching", {}) if isinstance(self.semantic_cfg, dict) else {}
         self.semantic_weights = self._load_semantic_weights()
-        self.min_field_similarity = self._safe_float(self.semantic_cfg.get("min_field_similarity", 0.08), 0.08)
-        self.lower_bound = self._safe_float(self.semantic_cfg.get("lower_bound", 0.50), 0.50)
         self.keyword_similarity_threshold = self._safe_float(
             self.keyword_cfg.get("similarity_threshold", 0.24),
             0.24,
@@ -51,12 +54,8 @@ class StartupMatchingEngine:
             0.45,
         )
         self.keyword_max_count = max(1, self._safe_int(self.keyword_cfg.get("max_keywords", 6), 6))
-        self._keyword_embedding_cache: Dict[str, np.ndarray] = {}
         self.id_to_index = {record.startup_id: idx for idx, record in enumerate(self.records)}
-        (
-            self.description_embeddings,
-            self.category_embeddings,
-        ) = self._build_field_embeddings()
+        self.scorer = self._build_scorer()
 
     @staticmethod
     def _safe_float(value: object, default: float) -> float:
@@ -74,85 +73,42 @@ class StartupMatchingEngine:
 
     def _load_semantic_weights(self) -> Dict[str, float]:
         defaults = {
-            "description": 0.40,
-            "category": 0.60,
+            "company": 0.05,
+            "category": 0.35,
+            "description": 0.55,
+            "meta": 0.05,
         }
+        configured = self.semantic_cfg.get("field_weights", {}) if isinstance(self.semantic_cfg, dict) else {}
+        fallback = self.embedding_weights if isinstance(self.embedding_weights, dict) else {}
 
-        configured_weights = self.semantic_cfg.get("field_weights", {}) if isinstance(self.semantic_cfg, dict) else {}
-        if not isinstance(configured_weights, dict):
-            configured_weights = {}
+        merged = {
+            "company": configured.get("company", fallback.get("company_name", defaults["company"])),
+            "category": configured.get("category", fallback.get("category", defaults["category"])),
+            "description": configured.get("description", fallback.get("description", defaults["description"])),
+            "meta": configured.get("meta", fallback.get("meta", defaults["meta"])),
+        }
+        return normalize_weights(merged, defaults)
 
-        fallback_weights = self.embedding_weights if isinstance(self.embedding_weights, dict) else {}
-
-        raw_weights: Dict[str, float] = {}
-        for key, default_value in defaults.items():
-            raw_value = configured_weights.get(key, fallback_weights.get(key, default_value))
-            try:
-                raw_weights[key] = max(0.0, float(raw_value))
-            except (TypeError, ValueError):
-                raw_weights[key] = default_value
-
-        total = sum(raw_weights.values())
-        if total <= 0:
-            return defaults
-
-        return {key: (value / total) for key, value in raw_weights.items()}
-
-    def _build_field_embeddings(self) -> Tuple[np.ndarray, np.ndarray]:
-        if not self.records:
-            empty = np.empty((0, 0), dtype=float)
-            return empty, empty
-
-        description_texts = [str(record.description).strip() or "startup brief description" for record in self.records]
-        category_texts = [", ".join(record.categories).strip() or "startup category" for record in self.records]
-
-        if self.embedder.backend == "tfidf" and self.embedder.vectorizer is not None:
-            # Reuse an already-fitted shared vectorizer when possible, avoiding professor embedding drift.
-            if not hasattr(self.embedder.vectorizer, "vocabulary_"):
-                self.embedder.fit([*description_texts, *category_texts])
-
-        return (
-            self.embedder.encode(description_texts),
-            self.embedder.encode(category_texts),
+    def _build_scorer(self) -> HybridEvidenceScorer:
+        return HybridEvidenceScorer(
+            record_chunks=build_startup_record_chunks(self.records),
+            embedder=self.embedder,
+            field_weights=self.semantic_weights,
+            dense_weight=self._safe_float(self.semantic_cfg.get("dense_weight", 0.75), 0.75),
+            lexical_weight=self._safe_float(self.semantic_cfg.get("lexical_weight", 0.25), 0.25),
+            top_k_chunks=self._safe_int(self.semantic_cfg.get("top_k_chunks", 3), 3),
+            coverage_bonus=self._safe_float(self.semantic_cfg.get("coverage_bonus", 0.08), 0.08),
+            calibration_enabled=bool(self.semantic_cfg.get("calibration_enabled", True)),
+            calibration_floor=self._safe_float(self.semantic_cfg.get("calibration_floor", 0.30), 0.30),
+            calibration_ceiling=self._safe_float(self.semantic_cfg.get("calibration_ceiling", 0.97), 0.97),
+            calibration_min_top_score=self._safe_float(self.semantic_cfg.get("calibration_min_top_score", 0.12), 0.12),
+            weak_match_threshold=self._safe_float(self.semantic_cfg.get("weak_match_threshold", 0.08), 0.08),
         )
 
-    def _score_field_similarity(self, query_vec: np.ndarray, field_embeddings: np.ndarray) -> np.ndarray:
-        if not self.records or field_embeddings.size == 0:
-            return np.zeros(len(self.records), dtype=float)
+    def _score_semantic(self, query: str) -> QueryScoreResult:
+        return self.scorer.score_query(query)
 
-        try:
-            return cosine_similarity(query_vec, field_embeddings)[0]
-        except Exception:
-            return np.zeros(len(self.records), dtype=float)
-
-    def _score_semantic(self, query_vec: np.ndarray) -> np.ndarray:
-        if not self.records:
-            return np.zeros(len(self.records), dtype=float)
-
-        description_scores = self._score_field_similarity(query_vec, self.description_embeddings)
-        category_scores = self._score_field_similarity(query_vec, self.category_embeddings)
-
-        w_description = self.semantic_weights.get("description", 0.40)
-        w_category = self.semantic_weights.get("category", 0.60)
-
-        weighted_scores = (
-            (w_description * description_scores)
-            + (w_category * category_scores)
-        )
-
-        field_scores = np.vstack((description_scores, category_scores))
-        weight_vector = np.array([w_description, w_category], dtype=float).reshape(-1, 1)
-        coverage = (
-            ((field_scores >= self.min_field_similarity).astype(float) * weight_vector).sum(axis=0)
-            / max(float(weight_vector.sum()), 1e-9)
-        )
-
-        # Favor records that match across multiple semantic fields (stricter relevance).
-        # Uses dynamically configured lower_bound.
-        strict_scores = weighted_scores * (self.lower_bound + ((1.0 - self.lower_bound) * coverage))
-        return np.maximum(strict_scores, 0.0)
-
-    def _score_graph_boost(self, base_scores: np.ndarray, graph_neighbor_weight: float) -> np.ndarray:
+    def _graph_neighbor_scores(self, base_scores: np.ndarray) -> np.ndarray:
         if not self.graph or not self.records:
             return np.zeros(len(self.records), dtype=float)
 
@@ -161,16 +117,30 @@ class StartupMatchingEngine:
             idx = self.id_to_index.get(record.startup_id)
             if idx is None or not self.graph.has_node(record.startup_id):
                 continue
-
             neighbors = list(self.graph.neighbors(record.startup_id))
             if not neighbors:
                 continue
+            values = [base_scores[self.id_to_index[n]] for n in neighbors if n in self.id_to_index]
+            if values:
+                neighbor_scores[idx] = float(np.mean(values))
 
-            vals = [base_scores[self.id_to_index[n]] for n in neighbors if n in self.id_to_index]
-            if vals:
-                neighbor_scores[idx] = float(np.mean(vals))
+        return neighbor_scores
 
-        return graph_neighbor_weight * neighbor_scores
+    @staticmethod
+    def _combine_final_scores(
+        relevance_scores: np.ndarray,
+        neighbor_scores: np.ndarray,
+        alpha: float,
+        graph_neighbor_weight: float,
+    ) -> np.ndarray:
+        alpha_weight = max(0.0, float(alpha))
+        graph_weight = max(0.0, float(graph_neighbor_weight))
+        total_weight = alpha_weight + graph_weight
+        if total_weight <= 0:
+            return np.clip(relevance_scores, 0.0, 1.0)
+
+        combined = ((alpha_weight * relevance_scores) + (graph_weight * neighbor_scores)) / total_weight
+        return np.clip(combined, 0.0, 1.0)
 
     def _extract_highlight_keywords(self, query: str, use_keyword_extraction: bool) -> List[Tuple[str, float]]:
         if not use_keyword_extraction or not self.query_processor:
@@ -235,67 +205,24 @@ class StartupMatchingEngine:
             token = self._normalize_keyword_text(raw)
             if not self._is_valid_keyword_token(token):
                 continue
-
             key = token.lower()
-            if key in candidates:
-                continue
-            candidates[key] = (token, 0.4)
+            if key not in candidates:
+                candidates[key] = (token, 0.4)
 
         ranked = sorted(candidates.values(), key=lambda item: item[1], reverse=True)
         return ranked[: max(self.keyword_max_count * 2, self.keyword_max_count)]
-
-    @staticmethod
-    def _cosine_dense(left: np.ndarray, right: np.ndarray) -> float:
-        if left.size == 0 or right.size == 0 or left.shape != right.shape:
-            return 0.0
-
-        denominator = float(np.linalg.norm(left) * np.linalg.norm(right))
-        if denominator <= 1e-12:
-            return 0.0
-        return float(np.dot(left, right) / denominator)
-
-    def _get_keyword_embedding(self, token: str) -> np.ndarray:
-        cache_key = token.lower()
-        cached = self._keyword_embedding_cache.get(cache_key)
-        if cached is not None:
-            return cached
-
-        try:
-            embedding = self.embedder.encode([token])[0]
-        except Exception:
-            embedding = np.zeros((0,), dtype=float)
-
-        self._keyword_embedding_cache[cache_key] = embedding
-        return embedding
 
     def _record_keyword_similarity(self, record_idx: int, token: str) -> float:
         if record_idx < 0 or record_idx >= len(self.records):
             return 0.0
 
-        token_vec = self._get_keyword_embedding(token)
-        if token_vec.size == 0:
+        try:
+            score_result = self.scorer.score_query(token)
+        except Exception:
             return 0.0
-
-        desc_vec = self.description_embeddings[record_idx] if self.description_embeddings.size else np.zeros((0,), dtype=float)
-        category_vec = self.category_embeddings[record_idx] if self.category_embeddings.size else np.zeros((0,), dtype=float)
-
-        semantic_score = (
-            (self.semantic_weights.get("description", 0.40) * self._cosine_dense(token_vec, desc_vec))
-            + (self.semantic_weights.get("category", 0.60) * self._cosine_dense(token_vec, category_vec))
-        )
-
-        record = self.records[record_idx]
-        searchable_text = " ".join(
-            [
-                str(record.company_name or ""),
-                str(record.description or ""),
-                " ".join(record.categories or []),
-            ]
-        ).lower()
-        if token.lower() in searchable_text:
-            semantic_score += 0.08
-
-        return max(0.0, float(semantic_score))
+        if record_idx >= len(score_result.raw_scores):
+            return 0.0
+        return max(0.0, float(score_result.raw_scores[record_idx]))
 
     def _build_display_keywords(
         self,
@@ -314,26 +241,17 @@ class StartupMatchingEngine:
 
         focus_indices = [int(idx) for idx in ranked_indices[: max(1, min(6, len(ranked_indices)))]]
         scored: List[Tuple[str, float]] = []
-
         for token, base_weight in candidates:
             best_similarity = 0.0
             for record_idx in focus_indices:
                 best_similarity = max(best_similarity, self._record_keyword_similarity(record_idx, token))
+            scored.append((token, (0.65 * best_similarity) + (0.35 * float(base_weight))))
 
-            combined = (0.65 * best_similarity) + (0.35 * float(base_weight))
-            scored.append((token, combined))
-
-        filtered = [
-            (token, score)
-            for token, score in scored
-            if score >= self.keyword_similarity_threshold
-        ]
+        filtered = [(token, score) for token, score in scored if score >= self.keyword_similarity_threshold]
         filtered.sort(key=lambda item: item[1], reverse=True)
-
         if filtered:
             return filtered[: self.keyword_max_count]
 
-        # Avoid frontend fallback to raw query keywords when semantic filtering is too strict.
         scored.sort(key=lambda item: item[1], reverse=True)
         return scored[: min(2, len(scored))]
 
@@ -356,7 +274,6 @@ class StartupMatchingEngine:
         appended_tokens = [token for token in top_keywords if token.strip().lower() not in existing_tokens]
         if not appended_tokens:
             return base_query
-
         return f"{base_query} {' '.join(appended_tokens)}".strip()
 
     def _build_matched_keywords(
@@ -371,7 +288,13 @@ class StartupMatchingEngine:
         if record_idx is None:
             return []
 
-        description_text = str(record.description or "").lower()
+        searchable_text = " ".join(
+            [
+                record.company_name,
+                record.description,
+                " ".join(record.categories),
+            ]
+        ).lower()
 
         matched: Dict[str, Tuple[str, float]] = {}
         for keyword, base_weight in keywords:
@@ -381,12 +304,9 @@ class StartupMatchingEngine:
 
             semantic_score = self._record_keyword_similarity(record_idx, token)
             score = semantic_score + (0.2 * float(base_weight))
-            in_description = token.lower() in description_text
-
-            # Startup card highlights description text only, so favor description-hit keywords.
-            if in_description:
+            if token.lower() in searchable_text:
                 score += 0.1
-            elif semantic_score < (self.keyword_similarity_threshold + 0.06):
+            elif semantic_score < (self.keyword_similarity_threshold + 0.04):
                 continue
 
             if score < self.keyword_similarity_threshold:
@@ -427,7 +347,6 @@ class StartupMatchingEngine:
         if merged:
             ranked = sorted(merged.values(), key=lambda item: item[1], reverse=True)
             return ranked[: self.keyword_max_count]
-
         return fallback_keywords[: self.keyword_max_count]
 
     def _format_result_item(
@@ -436,7 +355,6 @@ class StartupMatchingEngine:
         score: float,
         keywords: List[Tuple[str, float]],
     ) -> Dict[str, object]:
-        matched_keywords = self._build_matched_keywords(record, keywords)
         return {
             "startup_id": record.startup_id,
             "company_name": record.company_name,
@@ -451,7 +369,7 @@ class StartupMatchingEngine:
             "emails": record.emails,
             "funding": record.funding,
             "background_year": record.background_year,
-            "matched_keywords": matched_keywords,
+            "matched_keywords": self._build_matched_keywords(record, keywords),
             "score": float(score),
         }
 
@@ -507,14 +425,17 @@ class StartupMatchingEngine:
                 "enhanced_query": match_query,
             }
 
-        query_vec = self.embedder.encode([match_query])
-        semantic_scores = self._score_semantic(query_vec)
+        score_result = self._score_semantic(match_query)
+        semantic_scores = np.clip(score_result.calibrated_scores, 0.0, 1.0)
 
-        # Keep beta for forward compatibility; startup priority is intentionally disabled.
-        base_scores = (alpha * semantic_scores) + (beta * 0.0)
-        graph_boost = self._score_graph_boost(semantic_scores, graph_neighbor_weight)
-        final_scores = base_scores + graph_boost
-
+        graph_scores = self._graph_neighbor_scores(semantic_scores)
+        final_scores = self._combine_final_scores(
+            relevance_scores=semantic_scores,
+            neighbor_scores=np.clip(graph_scores, 0.0, 1.0),
+            alpha=alpha,
+            graph_neighbor_weight=graph_neighbor_weight,
+        ) + (float(beta) * 0.0)
+        final_scores = np.clip(final_scores, 0.0, 1.0)
         ranked_indices = np.argsort(final_scores)[::-1][: max(1, int(top_k))]
 
         keyword_payload = self._build_display_keywords(
@@ -524,16 +445,14 @@ class StartupMatchingEngine:
             ranked_indices=ranked_indices,
         )
 
-        startup_results: List[Dict[str, object]] = []
-        for idx in ranked_indices:
-            startup_results.append(
-                self._format_result_item(
-                    record=self.records[idx],
-                    score=float(final_scores[idx]),
-                    keywords=keyword_payload,
-                )
+        startup_results = [
+            self._format_result_item(
+                record=self.records[int(idx)],
+                score=float(final_scores[idx]),
+                keywords=keyword_payload,
             )
-
+            for idx in ranked_indices
+        ]
         keyword_payload = self._collect_result_highlight_keywords(
             startup_results=startup_results,
             fallback_keywords=keyword_payload,

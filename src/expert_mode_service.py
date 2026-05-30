@@ -4,7 +4,7 @@ import json
 from typing import Any, Dict, List, Optional, Tuple
 
 from .embedding_model import TextEmbedder
-from .ollama_client import OllamaAPIError, OllamaClient, OllamaSettings, OllamaTextEmbedder
+from .ollama_client import OllamaAPIError, OllamaClient, OllamaSettings
 from .professor_graph_builder import build_graph
 from .professor_matching_engine import MatchingEngine
 from .professor_preprocessing import ProfessorRecord
@@ -64,31 +64,20 @@ class ExpertModeService:
         self.config = config or {}
         self.settings = OllamaSettings.from_config(self.config)
         self.client = OllamaClient(self.settings)
-        self.fallback_embedder = self._build_fallback_embedder(self.config)
-        self.embedder = OllamaTextEmbedder(
-            self.client,
-            self.settings.embedding_model,
-            fallback_embedder=self.fallback_embedder,
-            batch_size=self._embedding_batch_size(self.config),
-        )
+        self.embedder = self._build_embedder(self.config)
         self.professor_by_name = {record.name: record for record in self.professor_records}
         self.startup_by_id = {record.startup_id: record for record in self.startup_records}
         self.professor_engine: Optional[MatchingEngine] = None
         self.startup_engine: Optional[StartupMatchingEngine] = None
 
     @staticmethod
-    def _build_fallback_embedder(config: Dict[str, Any]) -> TextEmbedder:
+    def _build_embedder(config: Dict[str, Any]) -> TextEmbedder:
         embedding_cfg = config.get("embedding", {}) if isinstance(config, dict) else {}
         model_name = str(embedding_cfg.get("model_name", "sentence-transformers/all-mpnet-base-v2")).strip()
         batch_size = embedding_cfg.get("batch_size", 4)
         if not model_name:
             model_name = "sentence-transformers/all-mpnet-base-v2"
         return TextEmbedder(model_name=model_name, batch_size=batch_size)
-
-    @staticmethod
-    def _embedding_batch_size(config: Dict[str, Any]) -> int:
-        embedding_cfg = config.get("embedding", {}) if isinstance(config, dict) else {}
-        return embedding_cfg.get("batch_size", 4)
 
     def refresh(
         self,
@@ -101,36 +90,29 @@ class ExpertModeService:
         self.config = config or {}
         self.settings = OllamaSettings.from_config(self.config)
         self.client = OllamaClient(self.settings)
-        self.fallback_embedder = self._build_fallback_embedder(self.config)
-        self.embedder = OllamaTextEmbedder(
-            self.client,
-            self.settings.embedding_model,
-            fallback_embedder=self.fallback_embedder,
-            batch_size=self._embedding_batch_size(self.config),
-        )
+        self.embedder = self._build_embedder(self.config)
         self.professor_by_name = {record.name: record for record in self.professor_records}
         self.startup_by_id = {record.startup_id: record for record in self.startup_records}
         self.professor_engine = None
         self.startup_engine = None
 
     def uses_embedding_fallback(self) -> bool:
-        return not getattr(self.embedder, "_remote_embeddings_enabled", True)
+        return False
 
     def active_chat_model(self) -> str:
         return str(getattr(self.client, "_resolved_chat_model", "") or self.settings.chat_model).strip()
 
     def backend_label(self) -> str:
         chat_model = self.active_chat_model()
-        if self.uses_embedding_fallback():
-            return f"Ollama · {chat_model} + MPNet retrieval"
-        return f"Ollama · {chat_model}"
+        retrieval_model = str(self.config.get("embedding", {}).get("model_name", "sentence-transformers/all-mpnet-base-v2")).strip()
+        return f"Ollama · {chat_model} + {retrieval_model.split('/')[-1]} retrieval"
 
     def status_text(self) -> str:
         return "EXPERT · LLM ready"
 
     def probe_and_warm(self) -> None:
         try:
-            self.client.probe(include_embeddings=False)
+            self.client.probe()
             self._ensure_engines()
         except OllamaAPIError as exc:
             raise ExpertModeError(str(exc)) from exc

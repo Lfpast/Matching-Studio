@@ -7,3 +7,4 @@ data/
 /matching-studio
 .env
 config/.env
+/tests

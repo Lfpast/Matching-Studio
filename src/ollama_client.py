@@ -4,10 +4,8 @@ from dataclasses import dataclass
 import json
 import os
 import re
-from typing import Any, Dict, Iterable, List, Sequence
+from typing import Any, Dict, List
 from urllib import error, request
-
-import numpy as np
 
 from .env_loader import load_project_env
 
@@ -28,7 +26,6 @@ class OllamaSettings:
     host: str = "https://ollama.com"
     api_key_env: str = "OLLAMA_API_KEY"
     chat_model: str = "gemma4:cloud"
-    embedding_model: str = "embeddinggemma"
     timeout_seconds: int = 60
     rerank_candidate_count: int = 12
 
@@ -51,13 +48,11 @@ class OllamaSettings:
         host = str(ollama_cfg.get("host", "https://ollama.com")).strip() or "https://ollama.com"
         api_key_env = str(ollama_cfg.get("api_key_env", "OLLAMA_API_KEY")).strip() or "OLLAMA_API_KEY"
         chat_model = str(ollama_cfg.get("chat_model", ollama_cfg.get("llm_model", "gemma4:cloud"))).strip() or "gemma4:cloud"
-        embedding_model = str(ollama_cfg.get("embedding_model", "embeddinggemma")).strip() or "embeddinggemma"
 
         return cls(
             host=host,
             api_key_env=api_key_env,
             chat_model=chat_model,
-            embedding_model=embedding_model,
             timeout_seconds=timeout_seconds,
             rerank_candidate_count=rerank_candidate_count,
         )
@@ -68,7 +63,6 @@ class OllamaClient:
         self.settings = settings
         self.api_base = self._build_api_base(settings.host)
         self._resolved_chat_model = settings.chat_model
-        self._resolved_embedding_model = settings.embedding_model
         self._cached_remote_models: List[str] | None = None
 
     @staticmethod
@@ -264,8 +258,6 @@ class OllamaClient:
                     parsed = json.loads(response_text)
                     if path == "/chat" and candidate:
                         self._resolved_chat_model = candidate
-                    if path == "/embed" and candidate:
-                        self._resolved_embedding_model = candidate
                     return parsed
             except error.HTTPError as exc:
                 response_text = exc.read().decode("utf-8", errors="replace")
@@ -380,28 +372,7 @@ class OllamaClient:
         content = response.get("message", {}).get("content", "")
         return self._parse_json_value(content)
 
-    def embed_texts(self, texts: Sequence[str], model_name: str | None = None) -> np.ndarray:
-        text_list = [str(text or "") for text in texts]
-        if not text_list:
-            return np.empty((0, 0), dtype=float)
-
-        payload = {
-            "model": model_name or self._resolved_embedding_model,
-            "input": text_list,
-            "truncate": True,
-            "keep_alive": "0",
-        }
-        response = self._post_json("/embed", payload)
-        embeddings = response.get("embeddings", [])
-        if not isinstance(embeddings, list):
-            raise OllamaAPIError("Ollama embed response is missing embeddings")
-
-        array = np.asarray(embeddings, dtype=float)
-        if array.ndim != 2:
-            raise OllamaAPIError("Ollama embed response returned an invalid vector shape")
-        return array
-
-    def probe(self, include_embeddings: bool = True) -> None:
+    def probe(self) -> None:
         schema = {
             "type": "object",
             "properties": {
@@ -417,86 +388,3 @@ class OllamaClient:
         )
         if not bool(response.get("ok")):
             raise OllamaAPIError(str(response.get("message") or "Ollama chat probe failed"))
-
-        if include_embeddings:
-            self.embed_texts(["expert mode connectivity probe"])
-
-
-class OllamaTextEmbedder:
-    def __init__(
-        self,
-        client: OllamaClient,
-        model_name: str | None = None,
-        fallback_embedder: Any | None = None,
-        batch_size: int = 4,
-    ) -> None:
-        self.client = client
-        self.model_name = model_name or client.settings.embedding_model
-        self.backend = "ollama"
-        self.vectorizer = None
-        self.fallback_embedder = fallback_embedder
-        self._remote_embeddings_enabled = True
-        self._fallback_reason = ""
-        self.batch_size = self._normalize_batch_size(batch_size)
-
-    @staticmethod
-    def _normalize_batch_size(batch_size: int) -> int:
-        try:
-            return max(1, int(batch_size))
-        except (TypeError, ValueError):
-            return 4
-
-    def _iter_batches(self, texts_list: List[str]) -> Iterable[List[str]]:
-        step = max(1, self.batch_size)
-        for start in range(0, len(texts_list), step):
-            yield texts_list[start:start + step]
-
-    @staticmethod
-    def _stack_embeddings(embeddings: List[np.ndarray]) -> np.ndarray:
-        non_empty = [np.atleast_2d(batch) for batch in embeddings if getattr(batch, "size", 0) > 0]
-        if not non_empty:
-            return np.empty((0, 0), dtype=float)
-        if len(non_empty) == 1:
-            return non_empty[0]
-        return np.vstack(non_empty)
-
-    def fit(self, _texts: Iterable[str]) -> None:
-        if self.fallback_embedder is not None and hasattr(self.fallback_embedder, "fit"):
-            self.fallback_embedder.fit(_texts)
-        return None
-
-    def _fallback_encode(self, texts: List[str], error_message: str | None = None) -> np.ndarray:
-        if error_message:
-            self._fallback_reason = str(error_message)
-
-        if self.fallback_embedder is None:
-            raise OllamaAPIError(self._fallback_reason or "Ollama embeddings unavailable and no fallback embedder configured")
-
-        return self.fallback_embedder.encode(texts)
-
-    def encode(self, texts: Iterable[str]) -> np.ndarray:
-        text_list = list(texts)
-        if not text_list:
-            return np.empty((0, 0), dtype=float)
-        if not self._remote_embeddings_enabled:
-            return self._fallback_encode(text_list)
-
-        try:
-            batch_embeddings: List[np.ndarray] = []
-            for batch_texts in self._iter_batches(text_list):
-                try:
-                    batch_embeddings.append(self.client.embed_texts(batch_texts, model_name=self.model_name))
-                except OllamaAPIError as exc:
-                    message = str(exc)
-                    if self.client._looks_like_auth_error(message) or self.client._looks_like_model_name_error(message):
-                        self._remote_embeddings_enabled = False
-                        return self._fallback_encode(text_list, message)
-                    raise
-
-            return self._stack_embeddings(batch_embeddings)
-        except OllamaAPIError as exc:
-            message = str(exc)
-            if self.client._looks_like_auth_error(message) or self.client._looks_like_model_name_error(message):
-                self._remote_embeddings_enabled = False
-                return self._fallback_encode(text_list, message)
-            raise

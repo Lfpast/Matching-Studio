@@ -21,7 +21,6 @@ ollama:
   host: https://ollama.com
   api_key_env: OLLAMA_API_KEY
   chat_model: gemma4:cloud
-  embedding_model: embeddinggemma
   timeout_seconds: 120
   rerank_candidate_count: 12
 
@@ -51,11 +50,20 @@ startup:
     default_graph_neighbor_weight: 0.2
 
   semantic_matching:
-    min_field_similarity: 0.20
-    lower_bound: 0.50
+    dense_weight: 0.75
+    lexical_weight: 0.25
+    top_k_chunks: 3
+    coverage_bonus: 0.08
+    calibration_enabled: true
+    calibration_floor: 0.30
+    calibration_ceiling: 0.97
+    calibration_min_top_score: 0.12
+    weak_match_threshold: 0.08
     field_weights:
-      description: 0.4
-      category: 0.6
+      company: 0.05
+      description: 0.55
+      category: 0.35
+      meta: 0.05
 
 professor:
   deeptech:
@@ -81,13 +89,20 @@ professor:
     deeptech_weight: 0.4
 
   semantic_matching:
-    min_field_similarity: 0.20
-    lower_bound: 0.50
+    dense_weight: 0.75
+    lexical_weight: 0.25
+    top_k_chunks: 3
+    coverage_bonus: 0.08
+    calibration_enabled: true
+    calibration_floor: 0.30
+    calibration_ceiling: 0.97
+    calibration_min_top_score: 0.12
+    weak_match_threshold: 0.08
     field_weights:
-      interests: 0.20
-      project: 0.10
-      paper: 0.30
-      deeptech: 0.40
+      interests: 0.25
+      project: 0.20
+      paper: 0.20
+      deeptech: 0.35
 
   matching:
     default_top_k: 5
